@@ -1,0 +1,72 @@
+site_name: Corrigo SDK for Python
+site_description: Python SDK for the Corrigo Enterprise REST API
+site_url: https://github.com/ssbean/corrigo-sdk-python
+repo_url: https://github.com/ssbean/corrigo-sdk-python
+repo_name: ssbean/corrigo-sdk-python
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Authentication: getting-started/authentication.md
+  - User Guide:
+      - Work Orders: guide/work-orders.md
+      - Customers & Locations: guide/customers-locations.md
+      - Queries: guide/queries.md
+      - Error Handling: guide/error-handling.md
+  - API Reference:
+      - Client: api/client.md
+      - Authentication: api/auth.md
+      - HTTP Client: api/http.md
+      - Query Builder: api/query.md
+      - Commands: api/commands.md
+      - Models: api/models.md
+      - Exceptions: api/exceptions.md
