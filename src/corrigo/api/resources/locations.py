@@ -96,3 +96,23 @@ class LocationResource(BaseResource[Any]):
         from corrigo.api.query import QueryExecutor
 
         return QueryExecutor(self._http, builder).execute()
+
+    def list_by_customer(
+        self, customer_id: int, limit: int = 500
+    ) -> list[dict[str, Any]]:
+        """
+        List all assets/locations for a specific customer (store).
+
+        In Corrigo, the CommunityId on Location corresponds to the Customer ID.
+
+        Args:
+            customer_id: The customer ID.
+            limit: Maximum number of results.
+
+        Returns:
+            List of location/asset data for the customer.
+        """
+        builder = self.query().limit(limit).where_equal("CommunityId", customer_id)
+        from corrigo.api.query import QueryExecutor
+
+        return QueryExecutor(self._http, builder).execute()

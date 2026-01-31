@@ -662,6 +662,24 @@ def customers_delete(
         raise typer.Exit(1)
 
 
+@customers_app.command("assets")
+def customers_assets(
+    customer_id: int = typer.Argument(..., help="Customer ID"),
+    limit: int = typer.Option(500, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
+    """List all assets/locations for a customer (store)."""
+    try:
+        with get_client(profile) as client:
+            results = client.locations.list_by_customer(customer_id, limit=limit)
+            columns = ["Id", "Name", "TypeId", "ModelId", "ParentId"]
+            format_output(results, output, columns=columns, title=f"Assets for Customer {customer_id}")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
 # Location Commands
 
 
