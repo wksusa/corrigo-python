@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any, Optional
 
-import typer
-from rich.console import Console
-from rich.table import Table
+try:
+    import typer
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:
+    def main() -> None:
+        """Entry point that handles missing CLI dependencies."""
+        print("Error: CLI dependencies not installed.", file=sys.stderr)
+        print("Install with: pip install corrigo-sdk[cli]", file=sys.stderr)
+        sys.exit(1)
+    # Allow module to be imported without CLI deps for type checking
+    raise SystemExit(
+        "CLI dependencies not installed. Install with: pip install corrigo-sdk[cli]"
+    )
 
 from corrigo.client import CorrigoClient
 from corrigo.config import Config, get_credentials, validate_credentials
@@ -18,6 +30,15 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+
+
+def main() -> int:
+    """CLI entry point."""
+    try:
+        app()
+        return 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 0
 
 
 def get_client(profile: str | None = None) -> CorrigoClient:
@@ -58,7 +79,7 @@ app.add_typer(invoices_app, name="invoices")
 
 
 @app.callback()
-def main() -> None:
+def app_callback() -> None:
     """
     Corrigo CLI - Interact with Corrigo Enterprise API from the command line.
 
@@ -1024,4 +1045,4 @@ def invoices_get(invoice_id: int) -> None:
 
 
 if __name__ == "__main__":
-    app()
+    main()

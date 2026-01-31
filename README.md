@@ -5,17 +5,19 @@ A Python SDK and CLI for the Corrigo Enterprise REST API, providing easy access 
 ## Installation
 
 ```bash
+# SDK only (lightweight, no CLI dependencies)
 pip install corrigo-sdk
-```
 
-For development:
-```bash
-pip install corrigo-sdk[dev]
+# SDK + CLI
+pip install corrigo-sdk[cli]
+
+# Development
+pip install corrigo-sdk[cli,dev]
 ```
 
 Or with uv:
 ```bash
-uv sync
+uv sync --all-extras
 uv run corrigo --help
 ```
 
