@@ -333,7 +333,8 @@ class QueryExecutor:
         """
         query = self._builder.build()
         entity_type = self._builder._entity_type
-        response = self._http.post(f"/query/{entity_type}", json=query)
+        # Wrap query in QueryExpression as required by the API
+        response = self._http.post(f"/query/{entity_type}", json={"QueryExpression": query})
 
         entities = response.get("Entities", [])
         results = [e.get("Data", e) for e in entities]
@@ -362,7 +363,8 @@ class QueryExecutor:
         query = self._builder.build()
         query["Count"] = 0
         entity_type = self._builder._entity_type
-        response = self._http.post(f"/query/{entity_type}", json=query)
+        # Wrap query in QueryExpression as required by the API
+        response = self._http.post(f"/query/{entity_type}", json={"QueryExpression": query})
         return response.get("TotalCount", 0)
 
     def execute_paginated(self, page_size: int = 1000) -> list[dict[str, Any]]:

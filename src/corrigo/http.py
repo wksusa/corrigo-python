@@ -147,7 +147,7 @@ class CorrigoHTTPClient:
         try:
             response = self._client.post(
                 locator_url,
-                json={"CompanyName": self._company_name},
+                json={"Command": {"CompanyName": self._company_name}},
                 headers={
                     "Authorization": token.authorization_header,
                     "Content-Type": "application/json",
@@ -168,12 +168,25 @@ class CorrigoHTTPClient:
                 )
 
             data = response.json()
+            # Response is nested under CommandResult
+            result = data.get("CommandResult", data)
+
+            # Extract base URL from WSDL URL (e.g., http://az-am-ent-f8.corrigo.com/wsdk/... -> https://az-am-ent-f8.corrigo.com)
+            raw_url = result.get("Url", "")
+            if raw_url:
+                from urllib.parse import urlparse
+                parsed = urlparse(raw_url)
+                # Use HTTPS and just the hostname
+                base_url = f"https://{parsed.netloc}"
+            else:
+                base_url = DEFAULT_ENDPOINTS[self._region]
+
             return CompanyInfo(
-                url=data.get("Url", DEFAULT_ENDPOINTS[self._region]),
-                company_name=data.get("CompanyName", self._company_name),
-                company_id=data.get("CompanyId", 0),
-                company_version=data.get("CompanyVersion", "unknown"),
-                protocol=data.get("Protocol", "https"),
+                url=base_url,
+                company_name=result.get("CompanyName", self._company_name),
+                company_id=result.get("CompanyId", 0),
+                company_version=result.get("CompanyVersion", "unknown"),
+                protocol=result.get("Protocol", "https"),
             )
 
         except httpx.RequestError as e:
