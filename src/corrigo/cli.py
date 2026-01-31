@@ -790,6 +790,79 @@ def locations_equipment(
         raise typer.Exit(1)
 
 
+@locations_app.command("details")
+def locations_details(
+    location_id: int = typer.Argument(..., help="Location/asset ID"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
+    """Get asset details including attributes (make, model, serial, etc.)."""
+    try:
+        with get_client(profile) as client:
+            result = client.locations.get_with_attributes(location_id)
+
+            if output == OutputFormat.JSON:
+                format_output(result, output)
+            else:
+                # Display base info
+                console.print(f"[bold]Asset {location_id}[/bold]")
+                console.print(f"  Name: {result.get('Name')}")
+                console.print(f"  Type: {result.get('TypeId')}")
+                console.print(f"  Model ID: {result.get('ModelId')}")
+
+                # Display attributes
+                attrs = result.get('attributes', {})
+                if attrs:
+                    console.print("\n[bold]Attributes:[/bold]")
+                    for name, value in sorted(attrs.items()):
+                        console.print(f"  {name}: {value}")
+                else:
+                    console.print("\n[yellow]No attributes defined for this asset[/yellow]")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
+@locations_app.command("equipment-details")
+def locations_equipment_details(
+    customer_id: int = typer.Argument(..., help="Customer ID"),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
+    """List equipment for a customer with make/model/serial attributes."""
+    try:
+        with get_client(profile) as client:
+            results = client.locations.list_equipment_with_attributes(customer_id, limit=limit)
+
+            if output == OutputFormat.JSON:
+                format_output(results, output)
+            else:
+                console.print(f"[bold]Equipment for Customer {customer_id}[/bold]\n")
+                for equip in results:
+                    attrs = equip.get('attributes', {})
+                    model = attrs.get('Model #', '')
+                    serial = attrs.get('Serial #', '')
+                    mfr = attrs.get('Manufacturer Name', '')
+
+                    info_parts = []
+                    if mfr:
+                        info_parts.append(mfr)
+                    if model:
+                        info_parts.append(f"Model: {model}")
+                    if serial:
+                        info_parts.append(f"S/N: {serial}")
+
+                    info_str = " | ".join(info_parts) if info_parts else "[dim]No attributes[/dim]"
+                    console.print(f"  [{equip.get('Id')}] {equip.get('Name')}")
+                    console.print(f"        {info_str}")
+
+                console.print(f"\n[dim]Total: {len(results)} equipment items[/dim]")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
 @locations_app.command("create")
 def locations_create(
     name: str = typer.Option(..., "--name", "-n", help="Location name (required)"),
