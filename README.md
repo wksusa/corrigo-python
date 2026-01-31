@@ -6,13 +6,13 @@ A Python SDK and CLI for the Corrigo Enterprise REST API, providing easy access 
 
 ```bash
 # SDK only (lightweight, no CLI dependencies)
-pip install corrigo-sdk
+pip install corrigo
 
 # SDK + CLI
-pip install corrigo-sdk[cli]
+pip install corrigo[cli]
 
 # Development
-pip install corrigo-sdk[cli,dev]
+pip install corrigo[cli,dev]
 ```
 
 Or with uv:
@@ -394,8 +394,8 @@ This shows:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ssbean/corrigo-sdk-python.git
-cd corrigo-sdk-python
+git clone https://github.com/ssbean/corrigo-python.git
+cd corrigo-python
 
 # Using uv (recommended)
 uv sync
