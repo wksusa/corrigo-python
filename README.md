@@ -120,6 +120,8 @@ corrigo locations list                      # List locations
 corrigo locations buildings                 # List buildings only
 corrigo locations equipment                 # List equipment only
 corrigo locations search "HVAC"             # Search by name
+corrigo locations details 1098              # Get asset with make/model/serial
+corrigo locations equipment-details 163     # List equipment with attributes
 ```
 
 ### Output Formats
@@ -195,6 +197,13 @@ assets = client.locations.list_by_customer(163)
 
 # Search locations
 results = client.locations.search_by_name("HVAC")
+
+# Get asset with attributes (make, model, serial, etc.)
+asset = client.locations.get_with_attributes(1098)
+# Returns: {'Name': 'Dough Press 1', 'attributes': {'Model #': 'DP1300', 'Manufacturer Name': 'Proluxe'}}
+
+# List equipment with attributes for a customer
+equipment = client.locations.list_equipment_with_attributes(customer_id)
 ```
 
 ### Query Builder
@@ -263,6 +272,31 @@ Each customer belongs to a WorkZone:
 customer = client.customers.get(163)
 work_zone_id = customer["WorkZone"]["Id"]  # Usually same as customer ID
 ```
+
+### Equipment Attributes (Make, Model, Serial)
+
+Detailed equipment info is stored in `AssetAttribute`, not on the Location entity directly:
+
+```python
+# Get asset with all attributes resolved
+asset = client.locations.get_with_attributes(1098)
+print(asset["attributes"])
+# {'Model #': 'DP1300', 'Manufacturer Name': 'Proluxe'}
+```
+
+Available attribute types (defined in `AttributeDescriptor`):
+| Attribute | Description |
+|-----------|-------------|
+| Model # | Equipment model number |
+| Serial # | Serial number |
+| Manufacturer Name | Make/brand |
+| Voltage | Electrical voltage |
+| Electrical Phase | Single/three phase |
+| Date in Service | Installation date |
+| Original Cost | Purchase price |
+| Replacement Cost | Current replacement value |
+
+Note: Not all equipment has attributes populated - it depends on data entry practices.
 
 ## Configuration
 
