@@ -394,7 +394,7 @@ This shows:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ssbean/corrigo-python.git
+git clone https://github.com/wksusa/corrigo-python.git
 cd corrigo-python
 
 # Using uv (recommended)

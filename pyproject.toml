@@ -57,10 +57,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ssbean/corrigo-python"
-Documentation = "https://github.com/ssbean/corrigo-python#readme"
-Repository = "https://github.com/ssbean/corrigo-python"
-Issues = "https://github.com/ssbean/corrigo-python/issues"
+Homepage = "https://github.com/wksusa/corrigo-python"
+Documentation = "https://github.com/wksusa/corrigo-python#readme"
+Repository = "https://github.com/wksusa/corrigo-python"
+Issues = "https://github.com/wksusa/corrigo-python/issues"
 
 [tool.hatch.build.targets.sdist]
 include = [
