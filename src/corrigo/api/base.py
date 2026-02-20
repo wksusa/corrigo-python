@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Generic, TypeVar, TYPE_CHECKING
 
 from corrigo.api.query import QueryBuilder, QueryExecutor
+from corrigo.exceptions import CorrigoError
 
 if TYPE_CHECKING:
     from corrigo.http import CorrigoHTTPClient
@@ -197,5 +198,5 @@ class BaseResource(Generic[T]):
         try:
             self.get(entity_id, properties=["Id"])
             return True
-        except Exception:
+        except CorrigoError:
             return False

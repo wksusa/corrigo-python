@@ -888,7 +888,7 @@ def locations_equipment_details(
 def locations_create(
     name: str = typer.Option(..., "--name", "-n", help="Location name (required)"),
     model_id: int = typer.Option(..., "--model", "-m", help="Model/template ID (required)"),
-    type_id: int = typer.Option(1, "--type", "-t", help="Type ID (1=Building, 2=Unit, 3=Community, 4=Equipment)"),
+    type_id: str = typer.Option("Building", "--type", "-t", help="Asset type (Building, Unit, Community, Equipment, Floor, Space)"),
     street: Optional[str] = typer.Option(None, "--street", help="Street address"),
     city: Optional[str] = typer.Option(None, "--city", help="City"),
     state: Optional[str] = typer.Option(None, "--state", help="State/province"),

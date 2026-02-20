@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from corrigo.api.base import BaseResource
+from corrigo.exceptions import CorrigoError
 
 
 class LocationResource(BaseResource[Any]):
@@ -151,7 +152,7 @@ class LocationResource(BaseResource[Any]):
                     desc = self._http.get(f"/base/AttributeDescriptor/{desc_id}")
                     desc_name = desc.get("Data", desc).get("Name", f"Attribute {desc_id}")
                     attributes[desc_name] = value
-                except Exception:
+                except CorrigoError:
                     attributes[f"Attribute {desc_id}"] = value
 
         asset["attributes"] = attributes
@@ -210,7 +211,7 @@ class LocationResource(BaseResource[Any]):
                 try:
                     desc = self._http.get(f"/base/AttributeDescriptor/{desc_id}")
                     desc_cache[desc_id] = desc.get("Data", desc).get("Name", f"Attribute {desc_id}")
-                except Exception:
+                except CorrigoError:
                     desc_cache[desc_id] = f"Attribute {desc_id}"
             return desc_cache[desc_id]
 
