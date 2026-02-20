@@ -1,26 +1,23 @@
 """Tests for the models module."""
 
-import pytest
 
 from corrigo.models.base import (
+    Address,
+    ConditionExpression,
     CorrigoEntity,
     EntitySpecifier,
-    PropertySet,
-    MoneyValue,
-    Address,
-    ContactInfo,
-    QueryExpression,
     FilterExpression,
-    ConditionExpression,
-    OrderExpression,
+    MoneyValue,
+    PropertySet,
+    QueryExpression,
 )
 from corrigo.models.enums import (
-    EntityType,
-    WorkOrderStatus,
-    WorkOrderType,
     AssetType,
     ConditionOperator,
+    EntityType,
     FilterOperator,
+    WorkOrderStatus,
+    WorkOrderType,
 )
 
 
@@ -224,10 +221,12 @@ class TestEnums:
         assert WorkOrderType.PMRM.value == "PMRM"
 
     def test_asset_type_values(self):
-        """Should have correct asset type values."""
-        assert AssetType.BUILDING == 1
-        assert AssetType.UNIT == 2
-        assert AssetType.EQUIPMENT == 4
+        """Should have correct asset type values (string enum matching API)."""
+        assert AssetType.BUILDING == "Building"
+        assert AssetType.UNIT == "Unit"
+        assert AssetType.EQUIPMENT == "Equipment"
+        assert AssetType.COMMUNITY == "Community"
+        assert AssetType.ROOM_AREA == "RoomArea"
 
     def test_condition_operator_values(self):
         """Should have correct condition operator values."""

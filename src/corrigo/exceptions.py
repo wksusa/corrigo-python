@@ -1,5 +1,7 @@
 """Custom exceptions for the Corrigo SDK."""
 
+from __future__ import annotations
+
 from typing import Any
 
 
@@ -11,11 +13,14 @@ class CorrigoError(Exception):
         message: str,
         status_code: int | None = None,
         response_data: dict[str, Any] | None = None,
+        *,
+        error_code: str | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.response_data = response_data or {}
+        self.error_code = error_code
 
     def __str__(self) -> str:
         if self.status_code:

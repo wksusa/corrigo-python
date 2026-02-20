@@ -6,8 +6,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 DEFAULT_CONFIG_DIR = Path.home() / ".corrigo"
 DEFAULT_CONFIG_FILE = DEFAULT_CONFIG_DIR / "config.yaml"
 DEFAULT_PROFILE = "default"
@@ -24,6 +22,13 @@ class Config:
     def _load(self) -> None:
         """Load configuration from file."""
         if self.config_path.exists():
+            try:
+                import yaml
+            except ImportError:
+                raise ImportError(
+                    "pyyaml is required to read config files. "
+                    "Install with: pip install corrigo[cli]"
+                ) from None
             with open(self.config_path) as f:
                 self._config = yaml.safe_load(f) or {}
         else:
@@ -31,6 +36,13 @@ class Config:
 
     def _save(self) -> None:
         """Save configuration to file."""
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError(
+                "pyyaml is required to save config files. "
+                "Install with: pip install corrigo[cli]"
+            ) from None
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.config_path, "w") as f:
             yaml.dump(self._config, f, default_flow_style=False)

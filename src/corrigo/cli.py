@@ -13,11 +13,11 @@ except ImportError:
     def main() -> None:
         """Entry point that handles missing CLI dependencies."""
         print("Error: CLI dependencies not installed.", file=sys.stderr)
-        print("Install with: pip install corrigo-sdk[cli]", file=sys.stderr)
+        print("Install with: pip install corrigo[cli]", file=sys.stderr)
         sys.exit(1)
     # Allow module to be imported without CLI deps for type checking
     raise SystemExit(
-        "CLI dependencies not installed. Install with: pip install corrigo-sdk[cli]"
+        "CLI dependencies not installed. Install with: pip install corrigo[cli]"
     )
 
 from corrigo.client import CorrigoClient
@@ -706,7 +706,7 @@ def customers_assets(
 
 @locations_app.command("list")
 def locations_list(
-    type_id: Optional[int] = typer.Option(None, "--type", "-t", help="Filter by type (1=Building, 2=Unit, 3=Community, 4=Equipment)"),
+    type_id: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by type (Building, Unit, Community, Equipment, RoomArea, Regular)"),
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
     output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
@@ -997,51 +997,139 @@ def locations_delete(
 
 
 @contacts_app.command("list")
-def contacts_list() -> None:
+def contacts_list(
+    customer_id: Optional[int] = typer.Option(None, "--customer", "-c", help="Filter by customer ID"),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """List contacts."""
-    typer.echo("Contacts list - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            if customer_id:
+                results = client.contacts.list_by_customer(customer_id, limit=limit)
+            else:
+                results = client.contacts.list(limit=limit)
+            columns = ["Id", "DisplayAs", "ActorTypeId"]
+            format_output(results, output, columns=columns, title="Contacts")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @contacts_app.command("get")
-def contacts_get(contact_id: int) -> None:
+def contacts_get(
+    contact_id: int = typer.Argument(..., help="Contact ID"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """Get a contact by ID."""
-    typer.echo(f"Get contact {contact_id} - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            result = client.contacts.get(contact_id)
+            format_output(result, output, title=f"Contact {contact_id}")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @employees_app.command("list")
-def employees_list() -> None:
+def employees_list(
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """List employees."""
-    typer.echo("Employees list - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            results = client.employees.list(limit=limit)
+            columns = ["Id", "DisplayAs", "ActorTypeId"]
+            format_output(results, output, columns=columns, title="Employees")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @employees_app.command("get")
-def employees_get(employee_id: int) -> None:
+def employees_get(
+    employee_id: int = typer.Argument(..., help="Employee ID"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """Get an employee by ID."""
-    typer.echo(f"Get employee {employee_id} - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            result = client.employees.get(employee_id)
+            format_output(result, output, title=f"Employee {employee_id}")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @work_zones_app.command("list")
-def work_zones_list() -> None:
+def work_zones_list(
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """List work zones."""
-    typer.echo("Work zones list - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            results = client.work_zones.list(limit=limit)
+            columns = ["Id", "DisplayAs", "Number"]
+            format_output(results, output, columns=columns, title="Work Zones")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @work_zones_app.command("get")
-def work_zones_get(work_zone_id: int) -> None:
+def work_zones_get(
+    work_zone_id: int = typer.Argument(..., help="Work zone ID"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """Get a work zone by ID."""
-    typer.echo(f"Get work zone {work_zone_id} - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            result = client.work_zones.get(work_zone_id)
+            format_output(result, output, title=f"Work Zone {work_zone_id}")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @invoices_app.command("list")
-def invoices_list() -> None:
+def invoices_list(
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """List invoices."""
-    typer.echo("Invoices list - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            results = client.invoices.list(limit=limit)
+            columns = ["Id", "InvoiceState", "Amount"]
+            format_output(results, output, columns=columns, title="Invoices")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 @invoices_app.command("get")
-def invoices_get(invoice_id: int) -> None:
+def invoices_get(
+    invoice_id: int = typer.Argument(..., help="Invoice ID"),
+    output: OutputFormat = typer.Option(OutputFormat.TABLE, "--output", "-o", help="Output format"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
+) -> None:
     """Get an invoice by ID."""
-    typer.echo(f"Get invoice {invoice_id} - not yet implemented")
+    try:
+        with get_client(profile) as client:
+            result = client.invoices.get(invoice_id)
+            format_output(result, output, title=f"Invoice {invoice_id}")
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

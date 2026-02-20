@@ -17,7 +17,6 @@ from tenacity import (
 
 from corrigo.auth import CorrigoAuth, Token
 from corrigo.exceptions import (
-    AuthenticationError,
     AuthorizationError,
     ConcurrencyError,
     CorrigoError,
@@ -32,6 +31,15 @@ from corrigo.exceptions import (
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+# Mapping of Corrigo ErrorCode values to specific exception types for 400 responses.
+# Unknown error codes default to ValidationError.
+_ERROR_CODE_TO_EXCEPTION: dict[str, type[CorrigoError]] = {
+    "ENTITY_NOT_FOUND": NotFoundError,
+    "ERROR_CODE_1019": NotFoundError,
+    "CONCURRENCY_ERROR": ConcurrencyError,
+    "ERROR_CODE_6": ConcurrencyError,
+}
 
 
 class Region(Enum):
@@ -231,38 +239,60 @@ class CorrigoHTTPClient:
         if status == 200:
             return data
 
+        # Extract error details from API response
+        error_msg = data.get("ErrorMessage") or f"Request failed with status {status}"
+        error_code = data.get("ErrorCode", "")
+        if error_code:
+            error_msg = f"{error_msg} ({error_code})"
+
+        if status == 400:
+            exc_class = _ERROR_CODE_TO_EXCEPTION.get(error_code, ValidationError)
+            raise exc_class(
+                error_msg,
+                status_code=status,
+                response_data=data,
+                error_code=error_code,
+            )
+
         if status == 401:
             self._auth.invalidate_token()
             raise TokenExpiredError(
-                "Authentication token expired or invalid",
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if status == 403:
             raise AuthorizationError(
-                "Access denied",
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if status == 404:
             raise NotFoundError(
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if status == 409:
             raise ConcurrencyError(
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if status == 422:
             raise ValidationError(
-                "Validation failed",
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if status == 429:
@@ -271,19 +301,22 @@ class CorrigoHTTPClient:
                 retry_after=int(retry_after) if retry_after else None,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         if 500 <= status < 600:
             raise ServerError(
-                f"Server error: {status}",
+                error_msg,
                 status_code=status,
                 response_data=data,
+                error_code=error_code,
             )
 
         raise CorrigoError(
-            f"Request failed with status {status}",
+            error_msg,
             status_code=status,
             response_data=data,
+            error_code=error_code,
         )
 
     @retry(
@@ -351,8 +384,22 @@ class CorrigoHTTPClient:
         json: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Make a POST request."""
-        return self.request("POST", path, json=json, **kwargs)
+        """Make a POST request.
+
+        For Command API paths (/cmd/), automatically wraps the payload
+        in {"Command": ...} and unwraps CommandResult from the response.
+        """
+        # Command API requires {"Command": ...} wrapper
+        if path.startswith("/cmd/") and json is not None and "Command" not in json:
+            json = {"Command": json}
+
+        response = self.request("POST", path, json=json, **kwargs)
+
+        # Unwrap CommandResult for command responses
+        if path.startswith("/cmd/") and isinstance(response, dict):
+            response = response.get("CommandResult", response)
+
+        return response
 
     def put(
         self,

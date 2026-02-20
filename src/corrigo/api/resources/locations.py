@@ -21,7 +21,7 @@ class LocationResource(BaseResource[Any]):
         self,
         name: str,
         model_id: int,
-        type_id: int = 1,  # Building by default
+        type_id: str = "Building",
         address: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -31,7 +31,7 @@ class LocationResource(BaseResource[Any]):
         Args:
             name: Location name (max 64 chars, required).
             model_id: The model/template ID (required).
-            type_id: Asset type (1=Building, 2=Unit, 3=Community, 4=Equipment).
+            type_id: Asset type string (Building, Unit, Community, Equipment, etc.).
             address: Address data (Street, City, State, Zip, etc.).
             **kwargs: Additional location fields.
 
@@ -55,13 +55,13 @@ class LocationResource(BaseResource[Any]):
         return self._http.post(f"/base/{self.entity_type}", json=data)
 
     def list_by_type(
-        self, type_id: int, limit: int = 100
+        self, type_id: str, limit: int = 100
     ) -> list[dict[str, Any]]:
         """
         List locations of a specific type.
 
         Args:
-            type_id: The asset type ID (1=Building, 2=Unit, etc.).
+            type_id: The asset type string (Building, Unit, Community, Equipment, etc.).
             limit: Maximum number of results.
 
         Returns:
@@ -71,15 +71,15 @@ class LocationResource(BaseResource[Any]):
 
     def list_buildings(self, limit: int = 100) -> list[dict[str, Any]]:
         """List all building locations."""
-        return self.list_by_type(1, limit)
+        return self.list_by_type("Building", limit)
 
     def list_units(self, limit: int = 100) -> list[dict[str, Any]]:
         """List all unit locations."""
-        return self.list_by_type(2, limit)
+        return self.list_by_type("Unit", limit)
 
     def list_equipment(self, limit: int = 100) -> list[dict[str, Any]]:
         """List all equipment locations."""
-        return self.list_by_type(4, limit)
+        return self.list_by_type("Equipment", limit)
 
     def search_by_name(self, name: str, limit: int = 100) -> list[dict[str, Any]]:
         """

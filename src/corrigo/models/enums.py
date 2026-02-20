@@ -73,17 +73,18 @@ class WorkOrderType(str, Enum):
     REQUEST = "Request"
 
 
-class AssetType(IntEnum):
-    """Asset/Location type identifiers."""
+class AssetType(str, Enum):
+    """Asset/Location type identifiers (string values match API)."""
 
-    UNKNOWN = 0
-    BUILDING = 1
-    UNIT = 2
-    COMMUNITY = 3
-    EQUIPMENT = 4
-    FLOOR = 5
-    SPACE = 6
-    SYSTEM = 7
+    BUILDING = "Building"
+    UNIT = "Unit"
+    COMMUNITY = "Community"
+    EQUIPMENT = "Equipment"
+    FLOOR = "Floor"
+    SPACE = "Space"
+    SYSTEM = "System"
+    REGULAR = "Regular"
+    ROOM_AREA = "RoomArea"
 
 
 class ActorType(IntEnum):

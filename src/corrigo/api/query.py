@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from corrigo.models.base import (
     ConditionExpression,
@@ -353,19 +353,14 @@ class QueryExecutor:
         return results[0] if results else None
 
     def execute_count(self) -> int:
-        """
-        Execute the query and return the count of matching entities.
+        """Return the number of results matching the current query.
 
-        Returns:
-            The number of matching entities.
+        Note: The Corrigo API does not support server-side count queries.
+        This fetches results and counts them locally. The count is bounded
+        by the query's configured limit (default from builder, max 4000).
+        For exact counts of large sets, use execute_paginated().
         """
-        # Set count to 0 to get just the count without results
-        query = self._builder.build()
-        query["Count"] = 0
-        entity_type = self._builder._entity_type
-        # Wrap query in QueryExpression as required by the API
-        response = self._http.post(f"/query/{entity_type}", json={"QueryExpression": query})
-        return response.get("TotalCount", 0)
+        return len(self.execute())
 
     def execute_paginated(self, page_size: int = 1000) -> list[dict[str, Any]]:
         """
