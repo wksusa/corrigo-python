@@ -1,8 +1,8 @@
 site_name: Corrigo SDK for Python
 site_description: Python SDK for the Corrigo Enterprise REST API
-site_url: https://github.com/ssbean/corrigo-sdk-python
-repo_url: https://github.com/ssbean/corrigo-sdk-python
-repo_name: ssbean/corrigo-sdk-python
+site_url: https://github.com/wksusa/corrigo-python
+repo_url: https://github.com/wksusa/corrigo-python
+repo_name: wksusa/corrigo-python
 
 theme:
   name: material
