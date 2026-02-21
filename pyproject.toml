@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Python SDK for the Corrigo Enterprise REST API"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     { name = "Spencer Bean" }
 ]
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -34,8 +33,12 @@ dependencies = [
 
 [project.scripts]
 corrigo = "corrigo.cli:main"
+corrigo-mcp = "corrigo.mcp:main"
 
 [project.optional-dependencies]
+mcp = [
+    "fastmcp>=3.0.0",
+]
 cli = [
     "typer>=0.9.0",
     "rich>=13.0.0",
@@ -71,7 +74,7 @@ include = [
 packages = ["src/corrigo"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
@@ -95,7 +98,7 @@ ignore = [
 known-first-party = ["corrigo"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
