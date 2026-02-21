@@ -2,6 +2,8 @@
 
 A Python SDK and CLI for the Corrigo Enterprise REST API, providing easy access to facilities management and work order tracking functionality.
 
+**Requires Python 3.9+**
+
 ## Installation
 
 ```bash
@@ -28,7 +30,7 @@ uv run corrigo --help
 ```python
 from corrigo import CorrigoClient
 
-# Initialize the client
+# Use as a context manager (recommended — closes connections automatically)
 with CorrigoClient(
     client_id="your_client_id",
     client_secret="your_client_secret",
@@ -44,6 +46,17 @@ with CorrigoClient(
 
     # Get all assets for a store/customer
     assets = client.locations.list_by_customer(163)
+
+# Or manage the lifecycle manually
+client = CorrigoClient(
+    client_id="your_client_id",
+    client_secret="your_client_secret",
+    company_name="YourCompany",
+)
+try:
+    work_order = client.work_orders.get(12345)
+finally:
+    client.close()
 ```
 
 ### CLI Usage
@@ -208,6 +221,96 @@ asset = client.locations.get_with_attributes(1098)
 equipment = client.locations.list_equipment_with_attributes(customer_id)
 ```
 
+### Contacts
+
+```python
+# List contacts for a customer
+contacts = client.contacts.list_by_customer(163)
+
+# Find by username or email
+contact = client.contacts.get_by_username("jsmith")
+contact = client.contacts.get_by_email("jsmith@example.com")
+
+# Create a contact
+contact = client.contacts.create(
+    customer_id=163,
+    last_name="Smith",
+    username="jsmith",
+    first_name="Jane",
+    email="jsmith@example.com",
+    phone="555-1234",
+)
+```
+
+### Employees
+
+```python
+# List employees
+employees = client.employees.list(limit=100)
+employees = client.employees.list_by_role(role_id=5)
+employees = client.employees.list_available_for_assignment()
+
+# Find by username or employee number
+employee = client.employees.get_by_username("jdoe")
+employee = client.employees.get_by_number("EMP-001")
+
+# Create an employee
+employee = client.employees.create(
+    first_name="John",
+    last_name="Doe",
+    username="jdoe",
+    role_id=5,
+    email="jdoe@example.com",
+)
+```
+
+### Work Zones
+
+```python
+# List work zones
+zones = client.work_zones.list(limit=100)
+
+# Get a work zone
+zone = client.work_zones.get(1)
+zone = client.work_zones.get_by_number("WZ-001")
+
+# Create a work zone
+zone = client.work_zones.create(
+    display_as="Downtown District",
+    asset_template_id=1,
+    number="WZ-002",
+    wo_number_prefix="DT",
+)
+# Note: Work zones cannot be deleted.
+```
+
+### Invoices
+
+```python
+# List invoices by state
+invoices = client.invoices.list_draft()
+invoices = client.invoices.list_posted()
+invoices = client.invoices.list_paid()
+invoices = client.invoices.list_by_state("Credit")
+
+# List invoices for a customer
+invoices = client.invoices.list_by_customer(163)
+```
+
+### Pagination
+
+All `list()` methods support `limit` and `offset` for pagination. The maximum page size is 4000.
+
+```python
+# First page
+page1 = client.work_orders.list(limit=100, offset=0)
+
+# Next page
+page2 = client.work_orders.list(limit=100, offset=100)
+```
+
+`list()` does not auto-paginate — iterate manually using `offset` if you need more than one page.
+
 ### Query Builder
 
 For complex queries, use the QueryBuilder:
@@ -229,6 +332,50 @@ builder = (
 executor = QueryExecutor(client._http, builder)
 results = executor.execute()
 ```
+
+### Events / Webhooks
+
+The Corrigo Event Service sends real-time webhook notifications when work order events occur. This is a premium feature that requires special licensing.
+
+```python
+from corrigo.events import EventRouter, EventType
+
+router = EventRouter()
+
+@router.on(EventType.WO_COMPLETE)
+def handle_completion(event):
+    print(f"Work order {event.work_order.number} completed")
+
+@router.on(EventType.WO_CREATED)
+def handle_created(event):
+    print(f"New work order: {event.work_order.number}")
+
+@router.on_default
+def handle_other(event):
+    print(f"Unhandled event: {event.event_type}")
+
+# In your webhook endpoint (example with Flask):
+# router.handle(request.json)
+```
+
+Supported event types:
+
+| Event | Description |
+|-------|-------------|
+| `WoCreated` | Work order created |
+| `WoPickUp` | Work order picked up |
+| `WoStart` | Work order started |
+| `WoOnHold` | Work order placed on hold |
+| `WoComplete` | Work order completed |
+| `WoCancel` | Work order cancelled |
+| `WoReopen` | Work order reopened |
+| `WoAssignment` | Assignment changed |
+| `WoFlagChange` | Flag/priority changed |
+| `WoSchedule` | Schedule updated |
+| `QuoteRequested` / `QuoteSubmitted` / `QuoteApproved` / `QuoteRejected` | Quote lifecycle |
+| `NoteAdded` / `NoteModified` | Notes |
+| `VendorInvoiceStatus` / `InternalCostStatus` | Financial status |
+| `DocumentAttached` | Document attached |
 
 ## Data Model Nuances
 
@@ -407,6 +554,14 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR guidelines.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## License
 
