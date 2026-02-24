@@ -28,16 +28,48 @@ class WorkOrderResource(BaseResource[Any]):
         super().__init__(http_client)
         self._commands = CommandExecutor(http_client)
 
+    @staticmethod
+    def _sort_action_logs(data: dict[str, Any]) -> dict[str, Any]:
+        """Sort ActionLogRecords by ActionDate descending (newest first)."""
+        logs = data.get("ActionLogRecords")
+        if logs:
+            logs.sort(key=lambda r: r.get("ActionDate", ""), reverse=True)
+        return data
+
+    def get(
+        self,
+        entity_id: int,
+        properties: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Retrieve a work order by ID, with ActionLogRecords sorted newest-first."""
+        result = super().get(entity_id, properties)
+        return self._sort_action_logs(result)
+
+    def list(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        **filters: Any,
+    ) -> list[dict[str, Any]]:
+        """List work orders, with ActionLogRecords sorted newest-first."""
+        results = super().list(limit=limit, offset=offset, **filters)
+        for wo in results:
+            self._sort_action_logs(wo)
+        return results
+
     def create(
         self,
         customer_id: int,
         asset_id: int,
         task_id: int,
-        subtype_id: int,
+        subtype_id: int = 259,
+        contact_name: str | None = None,
+        contact_phone: str | None = None,
+        comment: str | None = None,
         priority_id: int | None = None,
         contact_address: str | None = None,
-        compute_assignment: bool = False,
-        compute_schedule: bool = False,
+        compute_assignment: bool = True,
+        compute_schedule: bool = True,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -47,9 +79,12 @@ class WorkOrderResource(BaseResource[Any]):
             customer_id: The customer ID.
             asset_id: The asset/location ID.
             task_id: The task ID.
-            subtype_id: The work order subtype ID.
-            priority_id: Optional priority ID.
-            contact_address: Optional contact email/phone.
+            subtype_id: The work order subtype ID (default: 259 = "Request").
+            contact_name: Name of the person reporting the issue.
+            contact_phone: Phone number for the contact.
+            comment: Description of the issue and any troubleshooting attempted.
+            priority_id: Optional priority ID (omit to inherit from task).
+            contact_address: Optional contact email/phone (legacy; prefer contact_phone).
             compute_assignment: Auto-assign the work order.
             compute_schedule: Auto-schedule the work order.
             **kwargs: Additional work order fields.
@@ -57,26 +92,39 @@ class WorkOrderResource(BaseResource[Any]):
         Returns:
             The created work order data.
         """
+        item: dict[str, Any] = {
+            "Asset": {"Id": asset_id},
+            "Task": {"Id": task_id},
+        }
+        if comment:
+            item["Comment"] = comment
+
         work_order: dict[str, Any] = {
             "Customer": {"Id": customer_id},
             "SubType": {"Id": subtype_id},
-            "Items": [
-                {
-                    "Asset": {"Id": asset_id},
-                    "Task": {"Id": task_id},
-                }
-            ],
+            "Items": [item],
             "TypeCategory": kwargs.pop("type_category", "Request"),
         }
 
-        if priority_id:
-            work_order["Priority"] = {"Id": priority_id}
+        if contact_name:
+            work_order["ContactName"] = contact_name
 
-        if contact_address:
+        if contact_phone:
+            work_order["ContactAddress"] = {
+                "Address": contact_phone,
+                "AddrTypeId": "Contact",
+            }
+        elif contact_address:
             work_order["ContactAddress"] = {
                 "Address": contact_address,
                 "AddrTypeId": "Contact",
             }
+
+        if comment:
+            work_order["TaskRefinement"] = comment
+
+        if priority_id:
+            work_order["Priority"] = {"Id": priority_id}
 
         # Add any additional fields
         work_order.update(kwargs)
