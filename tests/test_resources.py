@@ -110,6 +110,54 @@ class TestWorkOrderResource:
 
         assert len(results) == 2
 
+    @respx.mock
+    def test_get_by_number_exact(self, http_client):
+        """Should find a work order by its full 9-digit number."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(
+                200,
+                json={"Entities": [{"Data": {"Id": 42, "Number": "072460001"}}]},
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        result = resource.get_by_number("072460001")
+
+        assert result is not None
+        assert result["Id"] == 42
+
+    @respx.mock
+    def test_get_by_number_pads_leading_zero(self, http_client):
+        """Should zero-pad a short number and still find the work order.
+
+        Callers (e.g. voice agents) often omit the leading zero when reading a
+        work order number aloud — '72460001' instead of '072460001'.
+        """
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(
+                200,
+                json={"Entities": [{"Data": {"Id": 42, "Number": "072460001"}}]},
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        result = resource.get_by_number("72460001")  # missing leading zero
+
+        assert result is not None
+        assert result["Id"] == 42
+
+    @respx.mock
+    def test_get_by_number_returns_none_when_not_found(self, http_client):
+        """Should return None when no matching work order exists."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(200, json={"Entities": []})
+        )
+
+        resource = WorkOrderResource(http_client)
+        result = resource.get_by_number("000000001")
+
+        assert result is None
+
     def test_delete_raises_not_implemented(self, http_client):
         """Should raise NotImplementedError for delete."""
         resource = WorkOrderResource(http_client)

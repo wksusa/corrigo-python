@@ -241,5 +241,16 @@ class WorkOrderResource(BaseResource[Any]):
         return QueryExecutor(self._http, builder).execute()
 
     def get_by_number(self, number: str) -> dict[str, Any] | None:
-        """Find a work order by its number."""
-        return self.find_one(number=number)
+        """Find a work order by its display number.
+
+        Work order numbers in Corrigo are 9-digit zero-padded strings (e.g.
+        ``'072460001'``). Callers often drop the leading zero (e.g. from a
+        voice caller reading aloud). This method normalises the input by
+        left-padding with zeros to 9 digits when the value is all-numeric and
+        shorter than 9 characters, so both ``'72460001'`` and ``'072460001'``
+        resolve to the same work order.
+        """
+        normalized = number.strip()
+        if normalized.isdigit() and len(normalized) < 9:
+            normalized = normalized.zfill(9)
+        return self.find_one(number=normalized)
