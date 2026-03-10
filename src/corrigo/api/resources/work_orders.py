@@ -187,6 +187,41 @@ class WorkOrderResource(BaseResource[Any]):
         """Pause a work order."""
         return self._commands.pause_work_order(work_order_id, comment)
 
+    def add_note(
+        self,
+        work_order_id: int,
+        body: str,
+        note_type: str = "Public",
+    ) -> dict[str, Any]:
+        """Add a note to a work order.
+
+        Uses the ``POST /base/WoNote`` endpoint. Notes are separate from
+        action log entries produced by status transitions.
+
+        Valid ``note_type`` values:
+        - ``"Public"``  — visible to all parties (default; can be added multiple times)
+        - ``"Private"`` — internal only
+        - ``"Completion"`` — technician completion summary (max one per work order)
+
+        Args:
+            work_order_id: The work order to annotate.
+            body: Note text.
+            note_type: One of ``"Public"``, ``"Private"``, or ``"Completion"``.
+
+        Returns:
+            ``{"EntitySpecifier": {"EntityType": "WoNote", "Id": <int>}}``
+        """
+        return self._http.post(
+            "/base/WoNote",
+            json={
+                "Entity": {
+                    "WorkOrderId": work_order_id,
+                    "Body": body,
+                    "NoteTypeId": note_type,
+                }
+            },
+        )
+
     def flag(
         self,
         work_order_id: int,
