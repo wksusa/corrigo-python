@@ -154,10 +154,13 @@ def debug_connection(
                 raw_url = result.get("Url", "")
                 company_id = result.get("CompanyId")
                 # Extract base URL from WSDL URL
+                # Handle URLs without scheme (Corrigo sometimes omits http://)
                 if raw_url:
+                    if not raw_url.startswith(("http://", "https://")):
+                        raw_url = f"http://{raw_url}"
                     from urllib.parse import urlparse
                     parsed = urlparse(raw_url)
-                    base_url = f"https://{parsed.netloc}"
+                    base_url = f"https://{parsed.netloc}" if parsed.netloc else DEFAULT_ENDPOINTS[region]
                 else:
                     base_url = DEFAULT_ENDPOINTS[region]
                 console.print(f"   [yellow]Raw URL: {raw_url}[/yellow]")
