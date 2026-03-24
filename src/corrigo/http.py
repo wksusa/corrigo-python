@@ -180,12 +180,18 @@ class CorrigoHTTPClient:
             result = data.get("CommandResult", data)
 
             # Extract base URL from WSDL URL (e.g., http://az-am-ent-f8.corrigo.com/wsdk/... -> https://az-am-ent-f8.corrigo.com)
+            # Corrigo's API locator sometimes returns URLs without a scheme
+            # (e.g., "az-am-ent-f18.corrigo.com/wsdk/..." instead of
+            # "http://az-am-ent-f18.corrigo.com/wsdk/..."). Prepend http://
+            # so urlparse extracts the hostname correctly.
             raw_url = result.get("Url", "")
             if raw_url:
+                if not raw_url.startswith(("http://", "https://")):
+                    raw_url = f"http://{raw_url}"
                 from urllib.parse import urlparse
                 parsed = urlparse(raw_url)
                 # Use HTTPS and just the hostname
-                base_url = f"https://{parsed.netloc}"
+                base_url = f"https://{parsed.netloc}" if parsed.netloc else DEFAULT_ENDPOINTS[self._region]
             else:
                 base_url = DEFAULT_ENDPOINTS[self._region]
 
