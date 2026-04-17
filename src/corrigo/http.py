@@ -164,15 +164,10 @@ class CorrigoHTTPClient:
             )
 
             if response.status_code != 200:
-                logger.warning(
-                    f"Endpoint discovery failed ({response.status_code}), using default"
-                )
-                return CompanyInfo(
-                    url=DEFAULT_ENDPOINTS[self._region],
-                    company_name=self._company_name,
-                    company_id=0,
-                    company_version="unknown",
-                    protocol="https",
+                raise NetworkError(
+                    f"Endpoint discovery failed: locator returned HTTP {response.status_code} "
+                    f"for company '{self._company_name}' (region={self._region.value}). "
+                    f"Response: {response.text[:200]}"
                 )
 
             data = response.json()
@@ -195,6 +190,14 @@ class CorrigoHTTPClient:
             else:
                 base_url = DEFAULT_ENDPOINTS[self._region]
 
+            logger.info(
+                "corrigo endpoint discovered: %s (company=%s, company_id=%s, version=%s)",
+                base_url,
+                result.get("CompanyName", self._company_name),
+                result.get("CompanyId", 0),
+                result.get("CompanyVersion", "unknown"),
+            )
+
             return CompanyInfo(
                 url=base_url,
                 company_name=result.get("CompanyName", self._company_name),
@@ -204,14 +207,10 @@ class CorrigoHTTPClient:
             )
 
         except httpx.RequestError as e:
-            logger.warning(f"Endpoint discovery failed: {e}, using default")
-            return CompanyInfo(
-                url=DEFAULT_ENDPOINTS[self._region],
-                company_name=self._company_name,
-                company_id=0,
-                company_version="unknown",
-                protocol="https",
-            )
+            raise NetworkError(
+                f"Endpoint discovery failed: could not reach locator for company "
+                f"'{self._company_name}' (region={self._region.value}): {e}"
+            ) from e
 
     def _get_headers(self, token: Token) -> dict[str, str]:
         """Build request headers."""
