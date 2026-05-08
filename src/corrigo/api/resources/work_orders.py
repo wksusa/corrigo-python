@@ -164,11 +164,17 @@ class WorkOrderResource(BaseResource[Any]):
     def cancel(
         self,
         work_order_id: int,
-        reason: str | None = None,
+        action_reason_id: int,
         comment: str | None = None,
     ) -> dict[str, Any]:
-        """Cancel a work order."""
-        return self._commands.cancel_work_order(work_order_id, reason, comment)
+        """Cancel a work order.
+
+        ``action_reason_id`` is required: Corrigo's WoCancelCommand rejects
+        calls without a tenant-configured reason ID. See
+        :meth:`corrigo.api.commands.CommandExecutor.cancel_work_order` for how
+        to obtain valid IDs.
+        """
+        return self._commands.cancel_work_order(work_order_id, action_reason_id, comment)
 
     def reopen(self, work_order_id: int, comment: str | None = None) -> dict[str, Any]:
         """Reopen a cancelled or completed work order."""

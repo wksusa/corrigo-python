@@ -202,11 +202,16 @@ client.work_orders.pause(
 
 ### Cancel
 
+`action_reason_id` is required — Corrigo's `WoCancelCommand` rejects calls
+without a tenant-configured cancel-reason ID. Reason records are not exposed
+via the Query API; obtain valid IDs from the Corrigo admin UI or by inspecting
+prior cancels in `WoActionLog` (`TypeId = "Cancel"`).
+
 ```python
 client.work_orders.cancel(
     work_order_id=12345,
-    reason="Customer request",
-    comment="Customer resolved issue themselves"
+    action_reason_id=1796,  # tenant-specific
+    comment="Customer resolved issue themselves",
 )
 ```
 
@@ -265,5 +270,5 @@ Work orders cannot be deleted via the API. Use `cancel()` instead:
 # client.work_orders.delete(12345)
 
 # Use cancel instead
-client.work_orders.cancel(12345, reason="No longer needed")
+client.work_orders.cancel(12345, action_reason_id=1796)
 ```

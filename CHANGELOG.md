@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-05-08
+
+### Changed (breaking)
+
+- `WorkOrderResource.cancel` and `CommandExecutor.cancel_work_order` now take a
+  required `action_reason_id: int` parameter instead of `reason: str | None`.
+  The previous free-text `Reason` body was rejected by Corrigo
+  (`BUSINESS_LOGIC_ERROR: "status Cancelled requires reason"`) on tenants
+  configured to require a reason — including WKS production and staging — so
+  the prior signature did not work in practice. The CLI flag is now
+  `--action-reason-id / -r`. Reason IDs are tenant-configured and not exposed
+  via the Query API; obtain them from the Corrigo admin UI or by inspecting
+  `WoActionLog` rows with `TypeId = "Cancel"`.
+
 ## [0.3.0] - 2026-02-25
 
 ### Fixed

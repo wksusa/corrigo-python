@@ -490,14 +490,19 @@ def work_orders_complete(
 @work_orders_app.command("cancel")
 def work_orders_cancel(
     work_order_id: int = typer.Argument(..., help="Work order ID"),
-    reason: Optional[str] = typer.Option(None, "--reason", "-r", help="Cancellation reason"),
+    action_reason_id: int = typer.Option(
+        ...,
+        "--action-reason-id",
+        "-r",
+        help="Tenant-configured cancel reason ID (required by Corrigo).",
+    ),
     comment: Optional[str] = typer.Option(None, "--comment", "-m", help="Comment"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile to use"),
 ) -> None:
     """Cancel a work order."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.cancel(work_order_id, reason, comment)
+            result = client.work_orders.cancel(work_order_id, action_reason_id, comment)
             print_success(f"Cancelled work order {work_order_id}")
     except Exception as e:
         print_error(str(e))

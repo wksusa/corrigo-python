@@ -239,8 +239,8 @@ wheels = [
 ]
 
 [[package]]
-name = "corrigo-sdk"
-version = "0.1.0"
+name = "corrigo"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

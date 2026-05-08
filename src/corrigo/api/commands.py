@@ -160,7 +160,7 @@ class CommandExecutor:
     def cancel_work_order(
         self,
         work_order_id: int,
-        reason: str | None = None,
+        action_reason_id: int,
         comment: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -168,15 +168,21 @@ class CommandExecutor:
 
         Args:
             work_order_id: The work order ID.
-            reason: Cancellation reason.
-            comment: Optional comment.
+            action_reason_id: ID of a tenant-configured cancel reason. Required —
+                Corrigo's WoCancelCommand rejects calls without it
+                (BUSINESS_LOGIC_ERROR: "status Cancelled requires reason").
+                Reason records aren't exposed via the Query API; obtain valid
+                IDs from the Corrigo admin UI or by inspecting WoActionLog rows
+                with TypeId="Cancel".
+            comment: Optional free-text comment.
 
         Returns:
             Command response.
         """
-        params: dict[str, Any] = {"WorkOrderId": work_order_id}
-        if reason:
-            params["Reason"] = reason
+        params: dict[str, Any] = {
+            "WorkOrderId": work_order_id,
+            "ActionReasonId": action_reason_id,
+        }
         if comment:
             params["Comment"] = comment
         return self.execute("WoCancelCommand", **params)

@@ -175,7 +175,7 @@ wo = client.work_orders.create(
 client.work_orders.assign(wo_id, employee_id=100)
 client.work_orders.start(wo_id)
 client.work_orders.complete(wo_id, comment="Done")
-client.work_orders.cancel(wo_id, reason="Duplicate")
+client.work_orders.cancel(wo_id, action_reason_id=1796)
 client.work_orders.hold(wo_id, reason="Waiting for parts")
 client.work_orders.reopen(wo_id)
 ```

@@ -149,18 +149,24 @@ class TestCommandExecutor:
 
     @respx.mock
     def test_cancel_work_order(self, executor):
-        """Should cancel a work order via WoCancelCommand."""
-        respx.post("https://test-api.corrigo.com/api/v1/cmd/WoCancelCommand").mock(
+        """Should cancel a work order via WoCancelCommand with ActionReasonId."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/cmd/WoCancelCommand").mock(
             return_value=Response(200, json={"Success": True})
         )
 
         result = executor.cancel_work_order(
             work_order_id=12345,
-            reason="Customer request",
+            action_reason_id=1796,
             comment="Cancelling per customer",
         )
 
         assert result["Success"] is True
+
+        # The tenant rejects free-text Reason; verify we send ActionReasonId instead.
+        request_body = route.calls[0].request.content
+        assert b"ActionReasonId" in request_body
+        assert b"1796" in request_body
+        assert b'"Reason"' not in request_body
 
     @respx.mock
     def test_reopen_work_order(self, executor):
