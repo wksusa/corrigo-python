@@ -269,6 +269,75 @@ class WorkOrderResource(BaseResource[Any]):
         """List in-progress work orders."""
         return self.list(limit=limit, status_id="InProgress", **filters)
 
+    def list_on_hold(
+        self,
+        reason_id: int | None = None,
+        limit: int = 4000,
+    ) -> list[dict[str, Any]]:
+        """List work orders currently on hold, with the current hold reason exposed.
+
+        Each returned work order includes ``LastAction.Reason`` populated with
+        ``Id``, ``DisplayAs``, ``ActionId``, and ``Descr`` — the same record
+        Corrigo's admin UI uses for the "On Hold Reason" filter. Reading the
+        current hold reason no longer requires walking ``ActionLogRecords``.
+
+        When ``reason_id`` is provided, results are filtered client-side to
+        work orders whose current hold reason matches. Corrigo's Query API
+        rejects ``LastAction.Reason.Id`` as a server-side filter target, so
+        the filter has to be applied after fetching. The full OnHold pool is
+        typically small enough (a few hundred WOs) to fit well under the
+        4000-per-page cap.
+
+        Reason IDs are tenant-configured. To discover the ID for a hold reason
+        in your tenant, fetch one known example and inspect
+        ``LastAction.Reason.Id`` / ``LastAction.Reason.DisplayAs``.
+
+        Args:
+            reason_id: If provided, only return work orders whose current
+                ``LastAction.Reason.Id`` matches this value.
+            limit: Max work orders to fetch from Corrigo (capped at 4000).
+                This caps the OnHold pool fetched, not the filtered result.
+
+        Returns:
+            OnHold work orders with ``LastAction.Reason.*`` and
+            ``ActionLogRecords`` populated (logs sorted newest-first).
+        """
+        from corrigo.api.query import QueryExecutor
+
+        builder = (
+            self.query()
+            .select(
+                "Id",
+                "Number",
+                "StatusId",
+                "ShortLocation",
+                "TaskRefinement",
+                "Employee.Id",
+                "Priority.Id",
+                "DtCreated",
+                "LastActionDate",
+                "LastAction.*",
+                "LastAction.Reason.*",
+                "ActionLogRecords.*",
+                "ActionLogRecords.Actor.*",
+            )
+            .where_equal("StatusId", "OnHold")
+            .limit(min(limit, 4000))
+        )
+        results = QueryExecutor(self._http, builder).execute()
+        for wo in results:
+            self._sort_action_logs(wo)
+
+        if reason_id is None:
+            return results
+
+        return [
+            wo
+            for wo in results
+            if ((wo.get("LastAction") or {}).get("Reason") or {}).get("Id")
+            == reason_id
+        ]
+
     def list_by_customer(
         self, customer_id: int, limit: int = 100, **filters: Any
     ) -> list[dict[str, Any]]:

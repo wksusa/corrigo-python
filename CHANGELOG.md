@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-05-13
+
+### Added
+
+- `WorkOrderResource.list_on_hold(reason_id=None, limit=4000)` — lists OnHold
+  work orders with `LastAction.Reason.*` populated, so callers can read the
+  current hold reason without walking `ActionLogRecords`. Optionally filters
+  by `LastAction.Reason.Id` client-side (Corrigo's Query API does not accept
+  it as a server-side filter target). Reason IDs are tenant-configured —
+  inspect a known example's `LastAction.Reason` to discover them.
+
 ## [0.4.0] - 2026-05-08
 
 ### Changed (breaking)

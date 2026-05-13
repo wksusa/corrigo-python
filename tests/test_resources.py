@@ -165,6 +165,62 @@ class TestWorkOrderResource:
         with pytest.raises(NotImplementedError):
             resource.delete(123)
 
+    @respx.mock
+    def test_list_on_hold_returns_all_when_no_reason(self, http_client):
+        """Should return all OnHold WOs with LastAction.Reason populated when reason_id is None."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Entities": [
+                        {
+                            "Data": {
+                                "Id": 1,
+                                "StatusId": "OnHold",
+                                "LastAction": {"Reason": {"Id": 1283, "DisplayAs": "Request Needs District Leader Approval"}},
+                            }
+                        },
+                        {
+                            "Data": {
+                                "Id": 2,
+                                "StatusId": "OnHold",
+                                "LastAction": {"Reason": {"Id": 1284, "DisplayAs": "Awaiting Parts"}},
+                            }
+                        },
+                    ]
+                },
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        results = resource.list_on_hold()
+
+        assert len(results) == 2
+        assert results[0]["LastAction"]["Reason"]["Id"] == 1283
+        assert results[1]["LastAction"]["Reason"]["Id"] == 1284
+
+    @respx.mock
+    def test_list_on_hold_filters_by_reason_id(self, http_client):
+        """Should filter client-side to WOs whose LastAction.Reason.Id matches reason_id."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Entities": [
+                        {"Data": {"Id": 1, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1283}}}},
+                        {"Data": {"Id": 2, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1284}}}},
+                        {"Data": {"Id": 3, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1283}}}},
+                        {"Data": {"Id": 4, "StatusId": "OnHold"}},  # no LastAction at all
+                    ]
+                },
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        results = resource.list_on_hold(reason_id=1283)
+
+        assert [wo["Id"] for wo in results] == [1, 3]
+
 
 class TestCustomerResource:
     """Tests for CustomerResource."""
