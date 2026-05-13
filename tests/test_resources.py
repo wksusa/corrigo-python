@@ -221,6 +221,33 @@ class TestWorkOrderResource:
 
         assert [wo["Id"] for wo in results] == [1, 3]
 
+    @respx.mock
+    def test_list_on_hold_limit_caps_post_filter_results(self, http_client):
+        """limit should cap returned matches, not the pre-filter fetch."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/WorkOrder").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Entities": [
+                        # Top of LastActionDate ordering: non-matches first
+                        {"Data": {"Id": 1, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1284}}}},
+                        {"Data": {"Id": 2, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1284}}}},
+                        {"Data": {"Id": 3, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1283}}}},
+                        {"Data": {"Id": 4, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1283}}}},
+                        {"Data": {"Id": 5, "StatusId": "OnHold", "LastAction": {"Reason": {"Id": 1283}}}},
+                    ]
+                },
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        results = resource.list_on_hold(reason_id=1283, limit=2)
+
+        # Even though limit=2 would have missed both matches if it capped the
+        # pre-filter fetch, the helper fetches the full pool, filters, then
+        # truncates — so we get 2 matches back.
+        assert [wo["Id"] for wo in results] == [3, 4]
+
 
 class TestCustomerResource:
     """Tests for CustomerResource."""

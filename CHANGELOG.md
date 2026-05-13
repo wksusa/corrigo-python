@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] - 2026-05-13
+
+### Fixed
+
+- `WorkOrderResource.list_on_hold` now treats `limit` as a cap on the
+  returned (post-filter) result set instead of a cap on the pre-filter
+  OnHold pool. Calling `list_on_hold(reason_id=1283, limit=5)` previously
+  returned 0 when the most-recent 5 OnHold work orders happened to have
+  other hold reasons; it now fetches the full OnHold pool, applies the
+  filter, then truncates.
+
 ## [0.5.0] - 2026-05-13
 
 ### Added

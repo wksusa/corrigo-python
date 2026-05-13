@@ -284,9 +284,11 @@ class WorkOrderResource(BaseResource[Any]):
         When ``reason_id`` is provided, results are filtered client-side to
         work orders whose current hold reason matches. Corrigo's Query API
         rejects ``LastAction.Reason.Id`` as a server-side filter target, so
-        the filter has to be applied after fetching. The full OnHold pool is
-        typically small enough (a few hundred WOs) to fit well under the
-        4000-per-page cap.
+        the filter has to be applied after fetching. To make the ``limit``
+        argument behave intuitively under a filter, this method always pulls
+        the full OnHold pool (capped at Corrigo's 4000-per-page maximum),
+        filters, and then truncates to ``limit``. Tenants typically have a
+        few hundred OnHold work orders at most, so the full pull is cheap.
 
         Reason IDs are tenant-configured. To discover the ID for a hold reason
         in your tenant, fetch one known example and inspect
@@ -295,8 +297,7 @@ class WorkOrderResource(BaseResource[Any]):
         Args:
             reason_id: If provided, only return work orders whose current
                 ``LastAction.Reason.Id`` matches this value.
-            limit: Max work orders to fetch from Corrigo (capped at 4000).
-                This caps the OnHold pool fetched, not the filtered result.
+            limit: Max work orders to return after filtering (capped at 4000).
 
         Returns:
             OnHold work orders with ``LastAction.Reason.*`` and
@@ -322,21 +323,21 @@ class WorkOrderResource(BaseResource[Any]):
                 "ActionLogRecords.Actor.*",
             )
             .where_equal("StatusId", "OnHold")
-            .limit(min(limit, 4000))
+            .limit(4000)
         )
         results = QueryExecutor(self._http, builder).execute()
         for wo in results:
             self._sort_action_logs(wo)
 
-        if reason_id is None:
-            return results
+        if reason_id is not None:
+            results = [
+                wo
+                for wo in results
+                if ((wo.get("LastAction") or {}).get("Reason") or {}).get("Id")
+                == reason_id
+            ]
 
-        return [
-            wo
-            for wo in results
-            if ((wo.get("LastAction") or {}).get("Reason") or {}).get("Id")
-            == reason_id
-        ]
+        return results[: min(limit, 4000)]
 
     def list_by_customer(
         self, customer_id: int, limit: int = 100, **filters: Any
