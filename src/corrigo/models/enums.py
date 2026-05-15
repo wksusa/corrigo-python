@@ -98,6 +98,21 @@ class ActorType(IntEnum):
     COMM_LEASE_SPACE = 5
 
 
+class DocumentType(IntEnum):
+    """Document type identifiers for ``Document.DocType.Id``.
+
+    These values are rows in Corrigo's ``DmDocType`` table. The two members
+    below are the well-known categories used across tenants for technician
+    photos and customer signatures. Other tenant-configured IDs (e.g. an
+    ``InvoicePrintout`` type) may exist on a given Corrigo deployment; pass
+    a bare ``int`` to :meth:`corrigo.api.resources.work_orders.WorkOrderResource.attach_document`
+    in that case.
+    """
+
+    SIGNATURE = 1
+    PICTURE = 3
+
+
 class ContactAddrType(str, Enum):
     """Contact address types."""
 

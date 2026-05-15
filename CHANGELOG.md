@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-05-15
+
+### Added
+
+- `WorkOrderResource.attach_document(work_order_id, file, *, filename, mime_type, doc_type, title, description, is_public)` —
+  attach a photo, signature, or other document to a work order. Accepts
+  raw `bytes` or a filesystem path (`str` / `Path`); infers filename and
+  MIME type from path inputs and enforces the 20 MB Corrigo upload ceiling
+  client-side before any HTTP call. Posts to `POST /base/Document` with the
+  required `ActorTypeId="WO"` / `StorageTypeId="Cloud"` / `DocType.Id`
+  envelope that was previously undocumented.
+- `WorkOrderResource.list_documents(work_order_id, limit=100)` — lists
+  documents attached to a work order, returning records with `DocUrl`
+  pointing at Corrigo's S3 bucket so callers can fetch binary content
+  directly.
+- `DocumentType` (`IntEnum`) in `corrigo.models.enums` with
+  `PICTURE = 3` and `SIGNATURE = 1` — the two well-known categories.
+  `attach_document` accepts a bare `int` as well, for tenant-specific
+  DocType IDs.
+- `docs/guide/work-order-documents.md` — guide covering the discovery
+  context, payload shape, validation rules, and S3 `DocUrl` behavior.
+
 ## [0.5.1] - 2026-05-13
 
 ### Fixed

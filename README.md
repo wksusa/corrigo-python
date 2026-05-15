@@ -178,7 +178,16 @@ client.work_orders.complete(wo_id, comment="Done")
 client.work_orders.cancel(wo_id, action_reason_id=1796)
 client.work_orders.hold(wo_id, reason="Waiting for parts")
 client.work_orders.reopen(wo_id)
+
+# Notes and document attachments
+client.work_orders.add_note(wo_id, "Ordered replacement compressor")
+client.work_orders.attach_document(wo_id, file="photo.png")  # bytes or path
+docs = client.work_orders.list_documents(wo_id)
 ```
+
+See [docs/guide/work-order-documents.md](docs/guide/work-order-documents.md)
+for the full document attachment guide, including the `DocumentType` enum
+and tenant-specific DocType IDs.
 
 ### Customers
 

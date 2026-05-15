@@ -1,16 +1,20 @@
 """Tests for entity resource managers."""
 
+import base64
+import json
+
 import pytest
 import respx
 from httpx import Response
 
-from corrigo.auth import CorrigoAuth
-from corrigo.http import CorrigoHTTPClient, Region
-from corrigo.api.resources.work_orders import WorkOrderResource
-from corrigo.api.resources.customers import CustomerResource
 from corrigo.api.resources.contacts import ContactResource
+from corrigo.api.resources.customers import CustomerResource
 from corrigo.api.resources.employees import EmployeeResource
 from corrigo.api.resources.locations import LocationResource
+from corrigo.api.resources.work_orders import WorkOrderResource
+from corrigo.auth import CorrigoAuth
+from corrigo.http import CorrigoHTTPClient, Region
+from corrigo.models.enums import DocumentType
 
 
 @pytest.fixture
@@ -247,6 +251,240 @@ class TestWorkOrderResource:
         # pre-filter fetch, the helper fetches the full pool, filters, then
         # truncates — so we get 2 matches back.
         assert [wo["Id"] for wo in results] == [3, 4]
+
+    # ---- attach_document / list_documents ----
+
+    @respx.mock
+    def test_attach_document_bytes_posts_documented_payload(self, http_client):
+        """Bytes input + explicit filename + explicit mime_type posts the
+        documented Document envelope and returns the mocked EntitySpecifier."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200,
+                json={"EntitySpecifier": {"EntityType": "Document", "Id": 456679}},
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        payload = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+        result = resource.attach_document(
+            work_order_id=174218,
+            file=payload,
+            filename="evidence.png",
+            mime_type="image/png",
+        )
+
+        assert result == {"EntitySpecifier": {"EntityType": "Document", "Id": 456679}}
+        sent = json.loads(route.calls[0].request.content)
+        entity = sent["Entity"]
+        assert entity["ActorTypeId"] == "WO"
+        assert entity["ActorId"] == 174218
+        assert entity["StorageTypeId"] == "Cloud"
+        assert entity["DocType"] == {"Id": int(DocumentType.PICTURE)}
+        assert entity["MimeType"] == "image/png"
+        assert entity["IsPublic"] is True
+        assert entity["Title"] == "evidence.png"
+        assert entity["Blob"]["FileName"] == "evidence.png"
+        assert base64.b64decode(entity["Blob"]["Body"]) == payload
+        # StartDate is auto-generated UTC isoformat
+        assert entity["StartDate"].endswith("+00:00")
+
+    @respx.mock
+    def test_attach_document_from_path_derives_filename_and_mime(self, http_client, tmp_path):
+        """A Path argument reads the file off disk and infers filename + MIME."""
+        png_path = tmp_path / "snap.png"
+        png_path.write_bytes(b"\x89PNG\r\n\x1a\nbody")
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200,
+                json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}},
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        resource.attach_document(work_order_id=42, file=png_path)
+
+        entity = json.loads(route.calls[0].request.content)["Entity"]
+        assert entity["Blob"]["FileName"] == "snap.png"
+        assert entity["MimeType"] == "image/png"
+
+    @respx.mock
+    def test_attach_document_explicit_mime_overrides_guess(self, http_client, tmp_path):
+        """An explicit mime_type wins over what mimetypes.guess_type would return."""
+        png_path = tmp_path / "snap.png"
+        png_path.write_bytes(b"x")
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        resource.attach_document(
+            work_order_id=42,
+            file=png_path,
+            mime_type="application/octet-stream",
+        )
+
+        entity = json.loads(route.calls[0].request.content)["Entity"]
+        assert entity["MimeType"] == "application/octet-stream"
+
+    @respx.mock
+    def test_attach_document_signature_serializes_doc_type_id_1(self, http_client):
+        """doc_type=DocumentType.SIGNATURE → DocType.Id == 1 in the payload."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        resource.attach_document(
+            work_order_id=42,
+            file=b"sig",
+            filename="sig.png",
+            mime_type="image/png",
+            doc_type=DocumentType.SIGNATURE,
+        )
+
+        entity = json.loads(route.calls[0].request.content)["Entity"]
+        assert entity["DocType"] == {"Id": 1}
+
+    @respx.mock
+    def test_attach_document_bare_int_doc_type_passes_through(self, http_client):
+        """A bare int doc_type (tenant-specific ID) serializes as-is."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        resource.attach_document(
+            work_order_id=42,
+            file=b"x",
+            filename="x.pdf",
+            mime_type="application/pdf",
+            doc_type=7,
+        )
+
+        entity = json.loads(route.calls[0].request.content)["Entity"]
+        assert entity["DocType"] == {"Id": 7}
+
+    @respx.mock
+    def test_attach_document_is_public_default_and_override(self, http_client):
+        """Default is_public=True is reflected; passing False flips it."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
+            return_value=Response(
+                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        resource.attach_document(
+            work_order_id=42, file=b"x", filename="x.png", mime_type="image/png"
+        )
+        resource.attach_document(
+            work_order_id=42,
+            file=b"x",
+            filename="x.png",
+            mime_type="image/png",
+            is_public=False,
+        )
+
+        first = json.loads(route.calls[0].request.content)["Entity"]
+        second = json.loads(route.calls[1].request.content)["Entity"]
+        assert first["IsPublic"] is True
+        assert second["IsPublic"] is False
+
+    def test_attach_document_bytes_without_filename_raises(self, http_client):
+        """Bytes input with no filename is a programmer error."""
+        resource = WorkOrderResource(http_client)
+
+        with pytest.raises(ValueError, match="filename is required"):
+            resource.attach_document(work_order_id=42, file=b"data")
+
+    def test_attach_document_unknown_extension_raises_without_mime(
+        self, http_client, tmp_path
+    ):
+        """A file with an unrecognized extension and no explicit mime_type fails loudly."""
+        weird = tmp_path / "blob.xyz123"
+        weird.write_bytes(b"x")
+        resource = WorkOrderResource(http_client)
+
+        with pytest.raises(ValueError, match="mime_type could not be inferred"):
+            resource.attach_document(work_order_id=42, file=weird)
+
+    @respx.mock
+    def test_attach_document_oversize_rejects_before_http_call(self, http_client):
+        """File ≥ 20 MB raises ValueError client-side; no HTTP request is sent."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document")
+        resource = WorkOrderResource(http_client)
+        oversize = b"\x00" * (20 * 1024 * 1024 + 1)
+
+        with pytest.raises(ValueError, match="20 MB"):
+            resource.attach_document(
+                work_order_id=42,
+                file=oversize,
+                filename="huge.bin",
+                mime_type="application/octet-stream",
+            )
+
+        assert route.called is False
+
+    @respx.mock
+    def test_list_documents_empty_returns_empty_list(self, http_client):
+        """No documents on the WO → []."""
+        respx.post("https://test-api.corrigo.com/api/v1/query/Document").mock(
+            return_value=Response(200, json={"Entities": []})
+        )
+
+        resource = WorkOrderResource(http_client)
+        results = resource.list_documents(work_order_id=174218)
+
+        assert results == []
+
+    @respx.mock
+    def test_list_documents_builds_and_filter_on_actor_type_and_id(self, http_client):
+        """The query must AND-join ActorTypeId='WO' and ActorId=<wo_id>."""
+        route = respx.post("https://test-api.corrigo.com/api/v1/query/Document").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Entities": [
+                        {
+                            "Data": {
+                                "Id": 456679,
+                                "Title": "evidence.png",
+                                "MimeType": "image/png",
+                                "DocUrl": "https://enterpriseam.s3.amazonaws.com/x/y/evidence.png",
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+
+        resource = WorkOrderResource(http_client)
+        results = resource.list_documents(work_order_id=174218)
+
+        assert len(results) == 1
+        assert results[0]["Id"] == 456679
+
+        body = json.loads(route.calls[0].request.content)
+        criteria = body["QueryExpression"]["Criteria"]
+        assert criteria["FilterOperator"] == "And"
+        conditions = {
+            (c["PropertyName"], c["Operator"]): c["Values"]
+            for c in criteria["Conditions"]
+        }
+        assert conditions[("ActorTypeId", "Equal")] == ["WO"]
+        assert conditions[("ActorId", "Equal")] == [174218]
+
+        # Dotted scalar property selection is required for DocType.*
+        properties = body["QueryExpression"]["PropertySet"]["Properties"]
+        assert "DocType.Id" in properties
+        assert "DocType.DisplayAs" in properties
 
 
 class TestCustomerResource:

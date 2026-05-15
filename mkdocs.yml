@@ -59,6 +59,7 @@ nav:
       - Authentication: getting-started/authentication.md
   - User Guide:
       - Work Orders: guide/work-orders.md
+      - Work Order Documents: guide/work-order-documents.md
       - Customers & Locations: guide/customers-locations.md
       - Queries: guide/queries.md
       - Error Handling: guide/error-handling.md
