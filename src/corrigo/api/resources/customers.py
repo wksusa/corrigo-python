@@ -86,3 +86,58 @@ class CustomerResource(BaseResource[Any]):
         from corrigo.api.query import QueryExecutor
 
         return QueryExecutor(self._http, builder).execute()
+
+    def get_custom_fields(self, customer_id: int) -> dict[str, str]:
+        """Return a customer's custom fields keyed by their human-readable name.
+
+        Custom fields (District Manager, DM Email, Brand VP, Facilities
+        Manager, Supervisor, etc.) live on the Customer entity but are NOT
+        exposed via the Query API or via ``/base/Customer/{id}`` with the
+        default property set. The only working access path is to request
+        ``CustomFields.Descriptor.Name`` and ``CustomFields.Value``
+        explicitly.
+
+        Values are plain strings as stored in Corrigo's tenant config — the
+        District Manager field, for example, holds a human name, not a
+        foreign key to an Employee record. Field names are tenant-specific;
+        for the WKS tenant see the project documentation.
+
+        Args:
+            customer_id: The Corrigo Customer (store) ID.
+
+        Returns:
+            A mapping of ``Descriptor.Name`` → ``Value``. Empty dict when the
+            customer has no custom fields. Entries lacking a name are
+            skipped; if two custom fields share a name, the last one wins.
+        """
+        response = self._http.get(
+            f"/base/{self.entity_type}/{customer_id}",
+            params={"properties": "CustomFields.Descriptor.Name,CustomFields.Value"},
+        )
+        data = response.get("Data", response) if isinstance(response, dict) else {}
+        fields = data.get("CustomFields") or []
+        result: dict[str, str] = {}
+        for entry in fields:
+            descriptor = entry.get("Descriptor") or {}
+            name = descriptor.get("Name")
+            if name is None:
+                continue
+            result[name] = entry.get("Value")
+        return result
+
+    def get_district_manager(self, customer_id: int) -> str | None:
+        """Return the District Manager name for a customer, or ``None``.
+
+        Shortcut for ``get_custom_fields(customer_id).get("District Manager")``.
+        The value is the human's full name as free text (the custom field is
+        Descriptor.Id 1069 on the WKS tenant), not a foreign key — see the
+        Customer custom fields guide for related fields (DM phone, DM email).
+
+        Args:
+            customer_id: The Corrigo Customer (store) ID.
+
+        Returns:
+            The District Manager name, or ``None`` if the field is not set
+            on this customer.
+        """
+        return self.get_custom_fields(customer_id).get("District Manager")

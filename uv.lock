@@ -240,7 +240,7 @@ wheels = [
 
 [[package]]
 name = "corrigo"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },

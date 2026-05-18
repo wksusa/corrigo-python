@@ -504,6 +504,134 @@ class TestCustomerResource:
 
         assert len(results) == 2
 
+    # ---- get_custom_fields / get_district_manager ----
+
+    @respx.mock
+    def test_get_custom_fields_returns_name_to_value_mapping(self, http_client):
+        """Should map Descriptor.Name → Value across all custom field entries."""
+        route = respx.get(
+            "https://test-api.corrigo.com/api/v1/base/Customer/227"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "Data": {
+                        "CustomFields": [
+                            {
+                                "Descriptor": {"Id": 1068, "Name": "Concept"},
+                                "Value": "Krispy Kreme",
+                                "Id": 1845,
+                            },
+                            {
+                                "Descriptor": {"Id": 1069, "Name": "District Manager"},
+                                "Value": "Annamae Murphy",
+                                "Id": 1846,
+                            },
+                            {
+                                "Descriptor": {
+                                    "Id": 1071,
+                                    "Name": "District Manager Email Address",
+                                },
+                                "Value": "kkd4080.district.leader@wksusa.com",
+                                "Id": 1848,
+                            },
+                        ]
+                    }
+                },
+            )
+        )
+
+        resource = CustomerResource(http_client)
+        fields = resource.get_custom_fields(227)
+
+        assert fields == {
+            "Concept": "Krispy Kreme",
+            "District Manager": "Annamae Murphy",
+            "District Manager Email Address": "kkd4080.district.leader@wksusa.com",
+        }
+        # Must request CustomFields.* explicitly — properties=* does not include
+        # CustomFields on /base/Customer/{id}.
+        assert route.calls[0].request.url.params["properties"] == (
+            "CustomFields.Descriptor.Name,CustomFields.Value"
+        )
+
+    @respx.mock
+    def test_get_custom_fields_empty_when_none_present(self, http_client):
+        """Should return {} when CustomFields is missing or empty."""
+        respx.get("https://test-api.corrigo.com/api/v1/base/Customer/999").mock(
+            return_value=Response(200, json={"Data": {}})
+        )
+
+        resource = CustomerResource(http_client)
+        assert resource.get_custom_fields(999) == {}
+
+    @respx.mock
+    def test_get_custom_fields_skips_entries_without_name(self, http_client):
+        """Entries lacking Descriptor.Name should be skipped, not crash."""
+        respx.get("https://test-api.corrigo.com/api/v1/base/Customer/227").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Data": {
+                        "CustomFields": [
+                            {"Descriptor": {"Id": 1069}, "Value": "orphan"},
+                            {
+                                "Descriptor": {"Id": 1068, "Name": "Concept"},
+                                "Value": "KKD",
+                            },
+                        ]
+                    }
+                },
+            )
+        )
+
+        resource = CustomerResource(http_client)
+        assert resource.get_custom_fields(227) == {"Concept": "KKD"}
+
+    @respx.mock
+    def test_get_district_manager_returns_value(self, http_client):
+        """Should return the District Manager custom field value."""
+        respx.get("https://test-api.corrigo.com/api/v1/base/Customer/227").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Data": {
+                        "CustomFields": [
+                            {
+                                "Descriptor": {"Id": 1069, "Name": "District Manager"},
+                                "Value": "Annamae Murphy",
+                            }
+                        ]
+                    }
+                },
+            )
+        )
+
+        resource = CustomerResource(http_client)
+        assert resource.get_district_manager(227) == "Annamae Murphy"
+
+    @respx.mock
+    def test_get_district_manager_returns_none_when_missing(self, http_client):
+        """Should return None when no District Manager custom field is set."""
+        respx.get("https://test-api.corrigo.com/api/v1/base/Customer/227").mock(
+            return_value=Response(
+                200,
+                json={
+                    "Data": {
+                        "CustomFields": [
+                            {
+                                "Descriptor": {"Id": 1068, "Name": "Concept"},
+                                "Value": "KKD",
+                            }
+                        ]
+                    }
+                },
+            )
+        )
+
+        resource = CustomerResource(http_client)
+        assert resource.get_district_manager(227) is None
+
 
 class TestContactResource:
     """Tests for ContactResource."""

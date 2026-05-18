@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-05-18
+
+### Added
+
+- `CustomerResource.get_custom_fields(customer_id)` — returns a customer's
+  tenant-configured custom fields keyed by `Descriptor.Name`. Calls
+  `GET /base/Customer/{id}` with an explicit
+  `properties=CustomFields.Descriptor.Name,CustomFields.Value` request,
+  which is the only working access path: `/query/Customer` and
+  `/base/Customer/{id}` with the default property set both return zero
+  custom fields, and `properties=*` does not include `CustomFields`.
+- `CustomerResource.get_district_manager(customer_id)` — one-line
+  shortcut that returns the human's full name from the `District Manager`
+  custom field (Descriptor.Id 1069 on the WKS tenant), or `None` if the
+  field is not set on that customer.
+
 ## [0.6.0] - 2026-05-15
 
 ### Added
