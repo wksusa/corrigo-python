@@ -5,16 +5,17 @@ import respx
 from httpx import Response
 
 from corrigo.auth import CorrigoAuth
-from corrigo.http import CorrigoHTTPClient, Region, CompanyInfo
 from corrigo.exceptions import (
     AuthorizationError,
     ConcurrencyError,
+    NetworkError,
     NotFoundError,
     RateLimitError,
     ServerError,
     TokenExpiredError,
     ValidationError,
 )
+from corrigo.http import CorrigoHTTPClient, Region
 
 
 @pytest.fixture
@@ -272,17 +273,20 @@ class TestEndpointDiscovery:
         assert client.base_url == "https://discovered-endpoint.corrigo.com"
 
     @respx.mock
-    def test_uses_default_on_discovery_failure(self):
-        """Should use default endpoint if discovery fails."""
-        # Mock token endpoint
+    def test_raises_network_error_on_discovery_failure(self):
+        """Discovery failures must raise NetworkError, not fall back silently.
+
+        Silent fallback to the hardcoded default endpoint caused
+        DATABASE_VERSION_MISMATCH errors on tenants not on that server
+        (see commit f77c4ca). The contract is now: fail loudly so callers
+        can log + handle.
+        """
         respx.post("https://oauth-pro-v2.corrigo.com/OAuth/token").mock(
             return_value=Response(
                 200,
                 json={"access_token": "token", "token_type": "Bearer", "expires_in": 1200},
             )
         )
-
-        # Mock discovery endpoint failure
         respx.post("https://am-apilocator.corrigo.com/api/v1/cmd/GetCompanyWsdkUrlCommand").mock(
             return_value=Response(500, json={"error": "internal_error"})
         )
@@ -294,5 +298,5 @@ class TestEndpointDiscovery:
             region=Region.AMERICAS,
         )
 
-        # Should fall back to default Americas endpoint
-        assert client.base_url == "https://am-ent-f2b.corrigo.com"
+        with pytest.raises(NetworkError, match="locator returned HTTP 500"):
+            _ = client.base_url

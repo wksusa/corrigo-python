@@ -1,14 +1,12 @@
 """Tests for the events module."""
 
-import pytest
 
 from corrigo.events import (
-    EventType,
+    ActionLog,
     EventPayload,
     EventRouter,
+    EventType,
     WoNote,
-    ActionLog,
-    WorkOrderEvent,
     create_webhook_handler,
 )
 

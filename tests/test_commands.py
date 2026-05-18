@@ -4,9 +4,9 @@ import pytest
 import respx
 from httpx import Response
 
+from corrigo.api.commands import CommandExecutor
 from corrigo.auth import CorrigoAuth
 from corrigo.http import CorrigoHTTPClient, Region
-from corrigo.api.commands import CommandExecutor
 
 
 @pytest.fixture

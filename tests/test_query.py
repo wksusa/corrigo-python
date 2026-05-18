@@ -1,9 +1,8 @@
 """Tests for the query builder module."""
 
-import pytest
 
 from corrigo.api.query import QueryBuilder
-from corrigo.models.enums import ConditionOperator, FilterOperator
+from corrigo.models.enums import ConditionOperator
 
 
 class TestQueryBuilder:

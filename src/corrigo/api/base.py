@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from corrigo.api.query import QueryBuilder, QueryExecutor
 from corrigo.exceptions import CorrigoError

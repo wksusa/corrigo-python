@@ -22,7 +22,7 @@ except ImportError:
 
 from corrigo.client import CorrigoClient
 from corrigo.config import Config, get_credentials, validate_credentials
-from corrigo.output import OutputFormat, format_output, print_error, print_success, print_detail
+from corrigo.output import OutputFormat, format_output, print_error, print_success
 
 app = typer.Typer(
     name="corrigo",
@@ -109,7 +109,7 @@ def debug_connection(
         raise typer.Exit(1)
 
     console.print("\n[bold]2. Testing OAuth token...[/bold]")
-    from corrigo.auth import CorrigoAuth, OAUTH_TOKEN_URL
+    from corrigo.auth import CorrigoAuth
 
     try:
         auth = CorrigoAuth(
@@ -117,7 +117,7 @@ def debug_connection(
             client_secret=creds["client_secret"],
         )
         token = auth.get_token()
-        console.print(f"   [green]Token obtained successfully[/green]")
+        console.print("   [green]Token obtained successfully[/green]")
         console.print(f"   Token type: {token.token_type}")
         console.print(f"   Token prefix: {token.access_token[:20]}...")
     except Exception as e:
@@ -176,7 +176,7 @@ def debug_connection(
         with get_client(profile) as client:
             # Try a simple query
             result = client._http.get("/base/WorkOrder/1", params={"properties": "Id"})
-            console.print(f"   [green]API connection successful[/green]")
+            console.print("   [green]API connection successful[/green]")
     except Exception as e:
         print_error(f"API request failed: {e}")
 
@@ -448,7 +448,7 @@ def work_orders_assign(
     """Assign a work order to an employee."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.assign(work_order_id, employee_id, comment)
+            client.work_orders.assign(work_order_id, employee_id, comment)
             print_success(f"Assigned work order {work_order_id}")
     except Exception as e:
         print_error(str(e))
@@ -464,7 +464,7 @@ def work_orders_start(
     """Start work on a work order."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.start(work_order_id, comment)
+            client.work_orders.start(work_order_id, comment)
             print_success(f"Started work order {work_order_id}")
     except Exception as e:
         print_error(str(e))
@@ -480,7 +480,7 @@ def work_orders_complete(
     """Complete a work order."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.complete(work_order_id, comment)
+            client.work_orders.complete(work_order_id, comment)
             print_success(f"Completed work order {work_order_id}")
     except Exception as e:
         print_error(str(e))
@@ -502,7 +502,7 @@ def work_orders_cancel(
     """Cancel a work order."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.cancel(work_order_id, action_reason_id, comment)
+            client.work_orders.cancel(work_order_id, action_reason_id, comment)
             print_success(f"Cancelled work order {work_order_id}")
     except Exception as e:
         print_error(str(e))
@@ -519,7 +519,7 @@ def work_orders_hold(
     """Put a work order on hold."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.hold(work_order_id, reason, comment)
+            client.work_orders.hold(work_order_id, reason, comment)
             print_success(f"Put work order {work_order_id} on hold")
     except Exception as e:
         print_error(str(e))
@@ -535,7 +535,7 @@ def work_orders_reopen(
     """Reopen a cancelled or completed work order."""
     try:
         with get_client(profile) as client:
-            result = client.work_orders.reopen(work_order_id, comment)
+            client.work_orders.reopen(work_order_id, comment)
             print_success(f"Reopened work order {work_order_id}")
     except Exception as e:
         print_error(str(e))
@@ -663,7 +663,7 @@ def customers_update(
                 print_error("No updates specified")
                 raise typer.Exit(1)
 
-            result = client.customers.update(customer_id, data)
+            client.customers.update(customer_id, data)
             print_success(f"Updated customer {customer_id}")
     except Exception as e:
         print_error(str(e))
@@ -976,7 +976,7 @@ def locations_update(
                 print_error("No updates specified")
                 raise typer.Exit(1)
 
-            result = client.locations.update(location_id, data)
+            client.locations.update(location_id, data)
             print_success(f"Updated location {location_id}")
     except Exception as e:
         print_error(str(e))

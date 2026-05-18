@@ -6,7 +6,7 @@ import pytest
 import respx
 from httpx import Response
 
-from corrigo.auth import CorrigoAuth, Token, TOKEN_REFRESH_BUFFER
+from corrigo.auth import TOKEN_REFRESH_BUFFER, CorrigoAuth, Token
 from corrigo.exceptions import AuthenticationError, InvalidCredentialsError
 
 

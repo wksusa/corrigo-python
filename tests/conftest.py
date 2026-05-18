@@ -5,8 +5,8 @@ import respx
 from httpx import Response
 
 from corrigo.auth import CorrigoAuth
-from corrigo.http import CorrigoHTTPClient, Region
 from corrigo.client import CorrigoClient
+from corrigo.http import CorrigoHTTPClient, Region
 
 
 @pytest.fixture

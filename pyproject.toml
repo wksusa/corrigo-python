@@ -30,6 +30,9 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dateutil>=2.8.0",
     "tenacity>=8.0.0",
+    # Lets pydantic evaluate PEP 604 union syntax (str | None) at runtime
+    # on Python 3.9. Drop once we drop 3.9 support.
+    "eval_type_backport>=0.2.0; python_version < '3.10'",
 ]
 
 [project.scripts]
@@ -89,7 +92,17 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "UP045",  # non-pep604-annotation-optional: we support Python 3.9, so
+              # Optional[X] is fine and matches the wider stdlib style.
+    "B904",   # raise-without-from-inside-except: the CLI handlers print a
+              # formatted user-facing error then raise typer.Exit; the
+              # exception chain is intentionally suppressed by typer.
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest fixtures often pass setup-only arguments that aren't referenced
+# in the test body; that's the standard pytest pattern, not dead code.
+"tests/**" = ["ARG001", "ARG002"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["corrigo"]

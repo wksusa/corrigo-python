@@ -9,7 +9,6 @@ Note: The Event Service is a premium feature that requires special licensing.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 from typing import Any, Callable
 

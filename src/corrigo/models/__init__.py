@@ -2,17 +2,17 @@
 
 from corrigo.models.base import CorrigoEntity, EntitySpecifier, PropertySet
 from corrigo.models.enums import (
-    EntityType,
-    WorkOrderStatus,
-    WorkOrderType,
-    AssetType,
     ActorType,
+    AssetType,
+    ConditionOperator,
     ContactAddrType,
     CostCategory,
+    EntityType,
+    FilterOperator,
     InvoiceState,
     PaymentMethod,
-    ConditionOperator,
-    FilterOperator,
+    WorkOrderStatus,
+    WorkOrderType,
 )
 
 __all__ = [
