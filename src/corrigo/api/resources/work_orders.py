@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+import base64
+import mimetypes
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from corrigo.api.base import BaseResource
 from corrigo.api.commands import CommandExecutor
 
 if TYPE_CHECKING:
     from corrigo.http import CorrigoHTTPClient
+
+
+MAX_DOCUMENT_BYTES = 20 * 1024 * 1024  # Corrigo's 20 MB upload ceiling
+
+# Corrigo requires DocType on Document creates but derives the stored
+# value from MimeType server-side (image/* → 3 "Picture", application/pdf
+# → 32, etc.). The Id we send is decorative — it just needs to satisfy
+# the required-field check. 3 (Picture) is the most common category.
+_DOC_TYPE_PLACEHOLDER_ID = 3
 
 
 class WorkOrderResource(BaseResource[Any]):
@@ -228,6 +241,103 @@ class WorkOrderResource(BaseResource[Any]):
             },
         )
 
+    def attach_document(
+        self,
+        work_order_id: int,
+        file: bytes | str | Path,
+        *,
+        filename: str | None = None,
+        mime_type: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        is_public: bool = True,
+    ) -> dict[str, Any]:
+        """Attach a photo, signature, or other document to a work order.
+
+        Uses the ``POST /base/Document`` endpoint. The file content is sent
+        base64-encoded in the JSON body — Corrigo Enterprise does not accept
+        multipart uploads on this endpoint. Files land in Corrigo's regional
+        S3 bucket and the returned record carries a ``DocUrl`` pointing at
+        them.
+
+        Corrigo derives ``DocType`` server-side from ``MimeType``
+        (``image/png`` → Picture, ``application/pdf`` → PDF, …) and ignores
+        any ``DocType.Id`` we send. There is no caller-controlled way to
+        flag a Document as a Signature on this endpoint — signature records
+        are created through other (legacy / mobile-app) paths.
+
+        Args:
+            work_order_id: The work order to attach the document to.
+            file: File content. Either raw ``bytes``, or a filesystem path
+                (``str`` or :class:`pathlib.Path`). When a path is given,
+                ``filename`` and ``mime_type`` are inferred automatically
+                unless overridden.
+            filename: Required when ``file`` is ``bytes``; optional otherwise.
+                Surfaces in the Corrigo UI as the document's filename.
+            mime_type: Explicit MIME type. When omitted, inferred via
+                :func:`mimetypes.guess_type`. Raises ``ValueError`` if it
+                cannot be inferred — Corrigo derives ``DocType`` from this
+                value and a wrong MIME categorises the document incorrectly
+                in the UI.
+            title: Display title in the UI. Defaults to ``filename`` when
+                omitted.
+            description: Optional long-form description.
+            is_public: When ``True`` (default), the document is visible to all
+                parties (technician, store, facilities team). When ``False``,
+                it is internal-only.
+
+        Returns:
+            ``{"EntitySpecifier": {"EntityType": "Document", "Id": <int>}}``
+
+        Raises:
+            ValueError: If ``file`` is ``bytes`` without ``filename``, if
+                ``mime_type`` cannot be inferred, or if the file exceeds the
+                20 MB Corrigo upload limit.
+        """
+        if isinstance(file, (str, Path)):
+            path = Path(file)
+            file_bytes = path.read_bytes()
+            if filename is None:
+                filename = path.name
+        else:
+            file_bytes = file
+            if filename is None:
+                raise ValueError("filename is required when file is bytes")
+
+        if mime_type is None:
+            guessed, _ = mimetypes.guess_type(filename)
+            if guessed is None:
+                raise ValueError(
+                    f"mime_type could not be inferred from filename {filename!r}; "
+                    "pass mime_type explicitly"
+                )
+            mime_type = guessed
+
+        if len(file_bytes) > MAX_DOCUMENT_BYTES:
+            raise ValueError(
+                f"file is {len(file_bytes)} bytes; Corrigo's upload limit is "
+                f"{MAX_DOCUMENT_BYTES} bytes (20 MB)"
+            )
+
+        entity: dict[str, Any] = {
+            "Title": title if title is not None else filename,
+            "ActorTypeId": "WO",
+            "ActorId": work_order_id,
+            "StorageTypeId": "Cloud",
+            "DocType": {"Id": _DOC_TYPE_PLACEHOLDER_ID},
+            "MimeType": mime_type,
+            "IsPublic": is_public,
+            "StartDate": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "Blob": {
+                "FileName": filename,
+                "Body": base64.b64encode(file_bytes).decode("ascii"),
+            },
+        }
+        if description is not None:
+            entity["Description"] = description
+
+        return self._http.post("/base/Document", json={"Entity": entity})
+
     def flag(
         self,
         work_order_id: int,
@@ -338,6 +448,55 @@ class WorkOrderResource(BaseResource[Any]):
             ]
 
         return results[: min(limit, 4000)]
+
+    def list_documents(
+        self,
+        work_order_id: int,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List documents attached to a work order.
+
+        Queries the ``Document`` entity filtered by ``ActorTypeId=WO`` and
+        ``ActorId=<work_order_id>``. The returned records carry a ``DocUrl``
+        field pointing at Corrigo's S3 bucket — callers can fetch the binary
+        content directly without going back through this SDK.
+
+        ``DocType`` is a scalar property on the ``Document`` entity and must
+        be selected using dotted paths (``DocType.Id``, ``DocType.DisplayAs``)
+        rather than as a whole — Corrigo's query API rejects bare
+        ``DocType`` with ``ERROR_CODE_1003``.
+
+        Args:
+            work_order_id: The work order to query documents for.
+            limit: Maximum number of results (capped at 4000 by Corrigo).
+
+        Returns:
+            List of Document data dictionaries. Empty list when no documents
+            are attached.
+        """
+        from corrigo.api.query import QueryBuilder, QueryExecutor
+
+        builder = (
+            QueryBuilder("Document")
+            .select(
+                "Id",
+                "Title",
+                "Description",
+                "MimeType",
+                "StorageTypeId",
+                "StartDate",
+                "IsPublic",
+                "DocUrl",
+                "ActorTypeId",
+                "ActorId",
+                "DocType.Id",
+                "DocType.DisplayAs",
+            )
+            .where_equal("ActorTypeId", "WO")
+            .where_equal("ActorId", work_order_id)
+            .limit(limit)
+        )
+        return QueryExecutor(self._http, builder).execute()
 
     def list_by_customer(
         self, customer_id: int, limit: int = 100, **filters: Any
