@@ -8,23 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- `WorkOrderResource.attach_document(work_order_id, file, *, filename, mime_type, doc_type, title, description, is_public)` —
-  attach a photo, signature, or other document to a work order. Accepts
-  raw `bytes` or a filesystem path (`str` / `Path`); infers filename and
-  MIME type from path inputs and enforces the 20 MB Corrigo upload ceiling
-  client-side before any HTTP call. Posts to `POST /base/Document` with the
-  required `ActorTypeId="WO"` / `StorageTypeId="Cloud"` / `DocType.Id`
-  envelope that was previously undocumented.
+- `WorkOrderResource.attach_document(work_order_id, file, *, filename, mime_type, title, description, is_public)` —
+  attach a photo or other document to a work order. Accepts raw `bytes`
+  or a filesystem path (`str` / `Path`); infers filename and MIME type
+  from path inputs and enforces the 20 MB Corrigo upload ceiling
+  client-side before any HTTP call. Posts to `POST /base/Document` with
+  the required `ActorTypeId="WO"` / `StorageTypeId="Cloud"` /
+  `DocType.Id` envelope that was previously undocumented. Corrigo
+  derives the stored `DocType` from `MimeType` server-side
+  (`image/png` → Picture, `application/pdf` → PDF, …), so the helper
+  does not expose a caller-controlled `doc_type` parameter — the only
+  way to influence categorisation is to pass the correct `mime_type`.
 - `WorkOrderResource.list_documents(work_order_id, limit=100)` — lists
   documents attached to a work order, returning records with `DocUrl`
   pointing at Corrigo's S3 bucket so callers can fetch binary content
   directly.
-- `DocumentType` (`IntEnum`) in `corrigo.models.enums` with
-  `PICTURE = 3` and `SIGNATURE = 1` — the two well-known categories.
-  `attach_document` accepts a bare `int` as well, for tenant-specific
-  DocType IDs.
 - `docs/guide/work-order-documents.md` — guide covering the discovery
-  context, payload shape, validation rules, and S3 `DocUrl` behavior.
+  context, payload shape, MIME → DocType inference, validation rules,
+  and S3 `DocUrl` behavior.
 
 ## [0.5.1] - 2026-05-13
 

@@ -14,7 +14,6 @@ from corrigo.api.resources.locations import LocationResource
 from corrigo.api.resources.work_orders import WorkOrderResource
 from corrigo.auth import CorrigoAuth
 from corrigo.http import CorrigoHTTPClient, Region
-from corrigo.models.enums import DocumentType
 
 
 @pytest.fixture
@@ -280,7 +279,9 @@ class TestWorkOrderResource:
         assert entity["ActorTypeId"] == "WO"
         assert entity["ActorId"] == 174218
         assert entity["StorageTypeId"] == "Cloud"
-        assert entity["DocType"] == {"Id": int(DocumentType.PICTURE)}
+        # DocType is required by the server but its value is ignored —
+        # Corrigo derives the real category from MimeType.
+        assert entity["DocType"] == {"Id": 3}
         assert entity["MimeType"] == "image/png"
         assert entity["IsPublic"] is True
         assert entity["Title"] == "evidence.png"
@@ -328,48 +329,6 @@ class TestWorkOrderResource:
 
         entity = json.loads(route.calls[0].request.content)["Entity"]
         assert entity["MimeType"] == "application/octet-stream"
-
-    @respx.mock
-    def test_attach_document_signature_serializes_doc_type_id_1(self, http_client):
-        """doc_type=DocumentType.SIGNATURE → DocType.Id == 1 in the payload."""
-        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
-            return_value=Response(
-                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
-            )
-        )
-
-        resource = WorkOrderResource(http_client)
-        resource.attach_document(
-            work_order_id=42,
-            file=b"sig",
-            filename="sig.png",
-            mime_type="image/png",
-            doc_type=DocumentType.SIGNATURE,
-        )
-
-        entity = json.loads(route.calls[0].request.content)["Entity"]
-        assert entity["DocType"] == {"Id": 1}
-
-    @respx.mock
-    def test_attach_document_bare_int_doc_type_passes_through(self, http_client):
-        """A bare int doc_type (tenant-specific ID) serializes as-is."""
-        route = respx.post("https://test-api.corrigo.com/api/v1/base/Document").mock(
-            return_value=Response(
-                200, json={"EntitySpecifier": {"EntityType": "Document", "Id": 1}}
-            )
-        )
-
-        resource = WorkOrderResource(http_client)
-        resource.attach_document(
-            work_order_id=42,
-            file=b"x",
-            filename="x.pdf",
-            mime_type="application/pdf",
-            doc_type=7,
-        )
-
-        entity = json.loads(route.calls[0].request.content)["Entity"]
-        assert entity["DocType"] == {"Id": 7}
 
     @respx.mock
     def test_attach_document_is_public_default_and_override(self, http_client):

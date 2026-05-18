@@ -44,24 +44,33 @@ The working envelope embeds the file as base64 in the JSON body and includes
 }
 ```
 
-## Valid DocumentType Values
+## DocType is Derived from MimeType
 
-| `DocType.Id` | Member | Use |
+Corrigo **ignores** any `DocType.Id` sent in the `POST /base/Document`
+request body and infers the stored value from `MimeType` server-side.
+Observed on staging (2026-05-15):
+
+| Sent `MimeType` | Stored `DocType.Id` | Display |
 |---|---|---|
-| `1` | `DocumentType.SIGNATURE` | Customer or technician signature |
-| `3` | `DocumentType.PICTURE` | Photo / image attachment |
+| `image/png` (and other `image/*`) | `3` | Picture |
+| `application/pdf` | `32` | PDF |
 
-Other integer IDs may exist on a given tenant (e.g. an `InvoicePrintout`
-type configured for a specific customer). Pass a bare `int` to bypass the
-enum:
+The SDK still sends `DocType: {"Id": 3}` because the field is required by
+server-side validation, but the value is decorative — Corrigo overwrites
+it. The helper therefore does **not** expose a `doc_type` parameter; pass
+the correct `mime_type` and Corrigo will categorise the document
+correctly in the UI.
 
-```python
-client.work_orders.attach_document(..., doc_type=7)
-```
+**Signatures.** The `DocType.Id=1` "Signature" rows visible in existing
+Corrigo data are created through other paths (legacy SOAP clients, the
+mobile app signature pad, etc.) — not through `POST /base/Document`. This
+endpoint cannot produce a Signature record. If you need signature
+ergonomics, file a separate issue.
 
-The `DocType` table is not queryable through the Corrigo REST API — to
-discover tenant-specific IDs, inspect existing `Document` rows on the
-tenant in question.
+The `DocType` table itself is not queryable through the Corrigo REST API
+(`QueryBuilder("DocType")` returns `ENTITY_NOT_FOUND`), so the full list
+of MIME → DocType mappings can only be observed by uploading samples and
+reading back what was stored.
 
 ## Attaching a Document
 
@@ -88,18 +97,6 @@ from pathlib import Path
 result = client.work_orders.attach_document(
     work_order_id=174218,
     file=Path("evidence/photo.png"),
-)
-```
-
-### Signatures
-
-```python
-client.work_orders.attach_document(
-    work_order_id=174218,
-    file=signature_png_bytes,
-    filename="signature.png",
-    mime_type="image/png",
-    doc_type=DocumentType.SIGNATURE,
 )
 ```
 
@@ -144,8 +141,8 @@ content = httpx.get(docs[0]["DocUrl"]).content
 - **MIME type:** required, either explicit via `mime_type=` or inferred
   from the filename via `mimetypes.guess_type`. An unguessable filename
   raises `ValueError` rather than silently defaulting to
-  `application/octet-stream` — the wrong MIME shows up in the Corrigo UI
-  and is worse than failing loudly.
+  `application/octet-stream` — Corrigo derives `DocType` from this value
+  and a wrong MIME also miscategorises the document in the UI.
 - **Filename:** required when `file` is `bytes`; derived from `Path.name`
   when `file` is a path. Always surfaces in the Corrigo UI as the
   document's name.
@@ -162,7 +159,7 @@ Content-Type: application/json
     "ActorTypeId": "WO",
     "ActorId": 174218,
     "StorageTypeId": "Cloud",
-    "DocType": {"Id": 3},
+    "DocType": {"Id": 3},        // required but ignored — Corrigo derives DocType from MimeType
     "MimeType": "image/png",
     "IsPublic": true,
     "StartDate": "2026-05-15T18:42:00+00:00",

@@ -10,13 +10,18 @@ from typing import TYPE_CHECKING, Any
 
 from corrigo.api.base import BaseResource
 from corrigo.api.commands import CommandExecutor
-from corrigo.models.enums import DocumentType
 
 if TYPE_CHECKING:
     from corrigo.http import CorrigoHTTPClient
 
 
 MAX_DOCUMENT_BYTES = 20 * 1024 * 1024  # Corrigo's 20 MB upload ceiling
+
+# Corrigo requires DocType on Document creates but derives the stored
+# value from MimeType server-side (image/* → 3 "Picture", application/pdf
+# → 32, etc.). The Id we send is decorative — it just needs to satisfy
+# the required-field check. 3 (Picture) is the most common category.
+_DOC_TYPE_PLACEHOLDER_ID = 3
 
 
 class WorkOrderResource(BaseResource[Any]):
@@ -243,7 +248,6 @@ class WorkOrderResource(BaseResource[Any]):
         *,
         filename: str | None = None,
         mime_type: str | None = None,
-        doc_type: DocumentType | int = DocumentType.PICTURE,
         title: str | None = None,
         description: str | None = None,
         is_public: bool = True,
@@ -256,6 +260,12 @@ class WorkOrderResource(BaseResource[Any]):
         S3 bucket and the returned record carries a ``DocUrl`` pointing at
         them.
 
+        Corrigo derives ``DocType`` server-side from ``MimeType``
+        (``image/png`` → Picture, ``application/pdf`` → PDF, …) and ignores
+        any ``DocType.Id`` we send. There is no caller-controlled way to
+        flag a Document as a Signature on this endpoint — signature records
+        are created through other (legacy / mobile-app) paths.
+
         Args:
             work_order_id: The work order to attach the document to.
             file: File content. Either raw ``bytes``, or a filesystem path
@@ -266,11 +276,9 @@ class WorkOrderResource(BaseResource[Any]):
                 Surfaces in the Corrigo UI as the document's filename.
             mime_type: Explicit MIME type. When omitted, inferred via
                 :func:`mimetypes.guess_type`. Raises ``ValueError`` if it
-                cannot be inferred — Corrigo records the MIME type and a wrong
-                value is worse than failing loudly.
-            doc_type: A :class:`DocumentType` member or a bare ``int`` for
-                tenant-specific DocType IDs. Defaults to
-                :attr:`DocumentType.PICTURE`.
+                cannot be inferred — Corrigo derives ``DocType`` from this
+                value and a wrong MIME categorises the document incorrectly
+                in the UI.
             title: Display title in the UI. Defaults to ``filename`` when
                 omitted.
             description: Optional long-form description.
@@ -316,7 +324,7 @@ class WorkOrderResource(BaseResource[Any]):
             "ActorTypeId": "WO",
             "ActorId": work_order_id,
             "StorageTypeId": "Cloud",
-            "DocType": {"Id": int(doc_type)},
+            "DocType": {"Id": _DOC_TYPE_PLACEHOLDER_ID},
             "MimeType": mime_type,
             "IsPublic": is_public,
             "StartDate": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
