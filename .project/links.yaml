@@ -1,0 +1,11 @@
+# External-tool links for this project. See ~/wks/CLAUDE.md ("Project markers").
+# Harvested from this repo's `## Linear` block on 2026-07-06.
+# Print the workspace map:  bash ~/wks/claude-wks/bin/project-map.sh
+
+product: Create Corrigo SDK in python
+
+linear:
+  project: Create Corrigo SDK in python
+  id: 1200a9b3-4995-4c14-ade5-d476a2bf82f4
+  team: AI Labs
+  url: https://linear.app/wksusa/project/create-corrigo-sdk-in-python-4ad064c1c25d
